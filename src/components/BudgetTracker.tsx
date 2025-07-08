@@ -8,6 +8,9 @@ import { TransactionForm } from "./TransactionForm";
 import { TransactionHistory } from "./TransactionHistory";
 import { Analytics } from "./Analytics";
 import { PaymentSummary } from "./PaymentSummary";
+import { EnhancedAnalytics } from "./EnhancedAnalytics";
+import { MonthlySummary } from "./MonthlySummary";
+import { ExportManager } from "./ExportManager";
 
 export interface Category {
   id: string;
@@ -143,25 +146,25 @@ export const BudgetTracker = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Column - Categories and Budgets */}
-          <div className="lg:col-span-1 space-y-6">
-            <CategoryManager 
-              categories={categories} 
-              setCategories={setCategories}
-              incomeCategories={incomeCategories}
-              setIncomeCategories={setIncomeCategories}
-            />
-            <BudgetManager 
-              categories={categories}
-              budgets={budgets}
-              setBudgets={setBudgets}
-              selectedMonth={selectedMonth}
-            />
-          </div>
+        {/* Second Part - Categories and Budgets Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CategoryManager 
+            categories={categories} 
+            setCategories={setCategories}
+            incomeCategories={incomeCategories}
+            setIncomeCategories={setIncomeCategories}
+          />
+          <BudgetManager 
+            categories={categories}
+            budgets={budgets}
+            setBudgets={setBudgets}
+            selectedMonth={selectedMonth}
+          />
+        </div>
 
-          {/* Middle Column - Transaction Management */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* Third Part - Income/Expense Tabs with Payment Summary and History */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
             <Tabs defaultValue="expense" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="expense">Expenses</TabsTrigger>
@@ -200,12 +203,10 @@ export const BudgetTracker = () => {
                 />
               </TabsContent>
             </Tabs>
-
-            <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
           </div>
 
-          {/* Right Column - Analytics */}
-          <div className="lg:col-span-1">
+          <div className="space-y-6">
+            <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
             <Analytics 
               transactions={transactions}
               categories={[...categories, ...incomeCategories]}
@@ -214,6 +215,27 @@ export const BudgetTracker = () => {
             />
           </div>
         </div>
+
+        {/* Fourth Part - Enhanced Charts Section */}
+        <EnhancedAnalytics 
+          transactions={transactions}
+          categories={categories}
+          budgets={budgets}
+          selectedMonth={selectedMonth}
+        />
+
+        {/* Fifth Part - Monthly Summary with Date Range */}
+        <MonthlySummary 
+          transactions={transactions}
+          categories={[...categories, ...incomeCategories]}
+        />
+
+        {/* Sixth Part - Export Functionality */}
+        <ExportManager 
+          transactions={transactions}
+          categories={[...categories, ...incomeCategories]}
+          budgets={budgets}
+        />
       </div>
     </div>
   );

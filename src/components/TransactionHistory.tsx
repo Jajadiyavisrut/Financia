@@ -3,7 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, History } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Edit2, Trash2, History, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -41,6 +44,9 @@ export const TransactionHistory = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAmount, setEditingAmount] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
+  const [editingCategory, setEditingCategory] = useState("");
+  const [editingDate, setEditingDate] = useState<Date>(new Date());
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<"cash" | "online" | "card">("cash");
   const { toast } = useToast();
 
   const filteredTransactions = transactions.filter(t => 
@@ -59,21 +65,30 @@ export const TransactionHistory = ({
     setEditingId(transaction.id);
     setEditingAmount(transaction.amount.toString());
     setEditingDescription(transaction.description);
+    setEditingCategory(transaction.categoryId);
+    setEditingDate(new Date(transaction.date));
+    setEditingPaymentMethod(transaction.paymentMethod);
   };
 
   const saveEdit = () => {
-    if (!editingAmount || !editingDescription) return;
+    if (!editingAmount || !editingDescription || !editingCategory) return;
     
     setTransactions(transactions.map(t => 
       t.id === editingId ? { 
         ...t, 
         amount: parseFloat(editingAmount),
-        description: editingDescription.trim()
+        description: editingDescription.trim(),
+        categoryId: editingCategory,
+        date: format(editingDate, "yyyy-MM-dd"),
+        paymentMethod: editingPaymentMethod
       } : t
     ));
     setEditingId(null);
     setEditingAmount("");
     setEditingDescription("");
+    setEditingCategory("");
+    setEditingDate(new Date());
+    setEditingPaymentMethod("cash");
     
     toast({
       title: `${type === "income" ? "Income" : "Expense"} Updated`,
@@ -125,17 +140,66 @@ export const TransactionHistory = ({
                 <div key={transaction.id} className={`p-4 rounded-lg bg-secondary/50 ${getTransactionClass(transaction.paymentMethod)}`}>
                   {editingId === transaction.id ? (
                     <div className="space-y-3">
+                      <Select value={editingCategory} onValueChange={setEditingCategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-3 h-3 rounded-full" 
+                                  style={{ backgroundColor: category.color }}
+                                />
+                                {category.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
                       <Input
                         type="number"
                         value={editingAmount}
                         onChange={(e) => setEditingAmount(e.target.value)}
                         placeholder="Amount"
                       />
+                      
                       <Input
                         value={editingDescription}
                         onChange={(e) => setEditingDescription(e.target.value)}
                         placeholder="Description"
                       />
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {editingDate ? format(editingDate, "PPP") : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={editingDate}
+                            onSelect={(date) => setEditingDate(date || new Date())}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      
+                      <Select value={editingPaymentMethod} onValueChange={(value: "cash" | "online" | "card") => setEditingPaymentMethod(value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Payment method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="online">Online</SelectItem>
+                          <SelectItem value="card">Card</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
                       <div className="flex gap-2">
                         <Button size="sm" onClick={saveEdit}>Save</Button>
                         <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
