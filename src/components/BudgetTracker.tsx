@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { CategoryManager } from "./CategoryManager";
 import { BudgetManager } from "./BudgetManager";
 import { TransactionForm } from "./TransactionForm";
@@ -36,6 +39,7 @@ export interface Transaction {
 }
 
 export const BudgetTracker = () => {
+  const { signOut } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -120,6 +124,15 @@ export const BudgetTracker = () => {
                   })}
                 </SelectContent>
               </Select>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={signOut}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
             </div>
           </div>
           
