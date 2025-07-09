@@ -97,7 +97,7 @@ export const BudgetTracker = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary bg-clip-text text-transparent">
-                Budget & Expense Analyzer
+                Financia
               </h1>
               <p className="text-muted-foreground mt-2">Track your income, expenses, and budgets</p>
             </div>
@@ -236,6 +236,13 @@ export const BudgetTracker = () => {
           categories={[...categories, ...incomeCategories]}
           budgets={budgets}
         />
+
+        {/* Footer */}
+        <footer className="mt-12 py-6 border-t border-border">
+          <div className="text-center text-sm text-muted-foreground">
+            <p>&copy; 2025 Financia. All rights reserved. Created by Visrut.</p>
+          </div>
+        </footer>
       </div>
     </div>
   );

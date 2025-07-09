@@ -82,35 +82,8 @@ export const EnhancedAnalytics = ({ transactions, categories, budgets, selectedM
   };
 
   return (
-    <div className="space-y-6">
-      {/* Budget vs Actual Chart */}
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Budget vs Actual Expenses
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={getBudgetVsActualData()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="category" />
-              <YAxis />
-              <Tooltip 
-                formatter={(value: number) => [`₹${value.toLocaleString()}`, '']}
-                labelStyle={{ color: '#000' }}
-              />
-              <Legend />
-              <Bar dataKey="budget" fill="#8884d8" name="Budget" />
-              <Bar dataKey="actual" fill="#82ca9d" name="Actual Spent" />
-              <Bar dataKey="overBudget" fill="#ff7300" name="Over Budget" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Income vs Expenses Chart */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Income vs Expenses Overview */}
       <Card className="glass-card">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -150,13 +123,13 @@ export const EnhancedAnalytics = ({ transactions, categories, budgets, selectedM
           <CardTitle className="text-lg font-semibold">Expense Category Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={400}>
             <PieChart>
               <Pie
                 data={getExpenseCategoryData()}
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
+                outerRadius={150}
                 dataKey="amount"
                 label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
