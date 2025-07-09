@@ -12,6 +12,8 @@ import { TransactionHistory } from "./TransactionHistory";
 import { Analytics } from "./Analytics";
 import { PaymentSummary } from "./PaymentSummary";
 import { EnhancedAnalytics } from "./EnhancedAnalytics";
+import { IncomeExpenseCharts } from "./IncomeExpenseCharts";
+import { ShareDialog } from "./ShareDialog";
 import { MonthlySummary } from "./MonthlySummary";
 import { ExportManager } from "./ExportManager";
 
@@ -124,6 +126,12 @@ export const BudgetTracker = () => {
                   })}
                 </SelectContent>
               </Select>
+              <ShareDialog 
+                transactions={transactions}
+                categories={[...categories, ...incomeCategories]}
+                budgets={budgets}
+                selectedMonth={selectedMonth}
+              />
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -229,11 +237,10 @@ export const BudgetTracker = () => {
           </div>
         </div>
 
-        {/* Fourth Part - Enhanced Charts Section */}
-        <EnhancedAnalytics 
+        {/* Fourth Part - Income vs Expense Charts */}
+        <IncomeExpenseCharts 
           transactions={transactions}
-          categories={categories}
-          budgets={budgets}
+          categories={[...categories, ...incomeCategories]}
           selectedMonth={selectedMonth}
         />
 

@@ -32,6 +32,7 @@ interface TransactionHistoryProps {
   setTransactions: (transactions: Transaction[]) => void;
   selectedMonth: string;
   type: "income" | "expense";
+  readOnly?: boolean;
 }
 
 export const TransactionHistory = ({ 
@@ -39,7 +40,8 @@ export const TransactionHistory = ({
   categories, 
   setTransactions, 
   selectedMonth,
-  type 
+  type,
+  readOnly = false
 }: TransactionHistoryProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAmount, setEditingAmount] = useState("");
@@ -224,22 +226,26 @@ export const TransactionHistory = ({
                           <span className={`font-bold ${type === "income" ? "text-cyber-success" : "text-cyber-danger"}`}>
                             {type === "income" ? "+" : "-"}₹{transaction.amount.toLocaleString()}
                           </span>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => startEditing(transaction)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => deleteTransaction(transaction.id)}
-                            className="h-8 w-8 p-0 text-destructive"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => startEditing(transaction)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => deleteTransaction(transaction.id)}
+                                className="h-8 w-8 p-0 text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">{transaction.description}</p>

@@ -38,12 +38,46 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_finance_data: {
+        Row: {
+          created_at: string
+          data: Json
+          expires_at: string
+          id: string
+          share_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          expires_at: string
+          id?: string
+          share_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          id?: string
+          share_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_shared_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      generate_share_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

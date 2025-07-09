@@ -10,15 +10,17 @@ import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
+  onSharedDataAccess?: (shareCode: string) => void;
 }
 
-export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
+export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    displayName: ""
+    displayName: "",
+    shareCode: ""
   });
   const { toast } = useToast();
 
@@ -27,6 +29,13 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleShareCodeAccess = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.shareCode.trim()) {
+      onSharedDataAccess?.(formData.shareCode.trim().toUpperCase());
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -131,9 +140,10 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="share">Share Code</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin" className="space-y-4">
@@ -261,6 +271,33 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       Create Account
                     </>
                   )}
+                </Button>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="share" className="space-y-4">
+              <form onSubmit={handleShareCodeAccess} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="share-code">Share Code</Label>
+                  <Input
+                    id="share-code"
+                    name="shareCode"
+                    type="text"
+                    placeholder="Enter 8-character share code"
+                    value={formData.shareCode}
+                    onChange={handleInputChange}
+                    required
+                    maxLength={8}
+                    className="uppercase font-mono text-center"
+                    style={{ textTransform: 'uppercase' }}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Enter the share code to view financial data
+                  </p>
+                </div>
+                
+                <Button type="submit" className="w-full">
+                  Access Shared Data
                 </Button>
               </form>
             </TabsContent>
