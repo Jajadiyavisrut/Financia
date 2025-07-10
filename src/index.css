@@ -119,15 +119,15 @@ All colors MUST be HSL.
 
 @layer components {
   .glass-card {
-    @apply backdrop-blur-md bg-card/80 border border-white/10 rounded-xl shadow-2xl;
+    @apply backdrop-blur-md bg-card/80 border border-white/10 rounded-lg shadow-lg;
   }
   
   .cyber-glow {
-    box-shadow: 0 0 20px hsl(var(--cyber-primary) / 0.3);
+    box-shadow: 0 0 15px hsl(var(--cyber-primary) / 0.2);
   }
   
   .cyber-glow-secondary {
-    box-shadow: 0 0 20px hsl(var(--cyber-secondary) / 0.3);
+    box-shadow: 0 0 15px hsl(var(--cyber-secondary) / 0.2);
   }
   
   .transaction-cash {
@@ -144,5 +144,16 @@ All colors MUST be HSL.
   
   .transaction-income {
     @apply border-l-4 border-l-emerald-400;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 640px) {
+    .glass-card {
+      @apply rounded-lg shadow-md;
+    }
+    
+    .container {
+      @apply px-2;
+    }
   }
 }

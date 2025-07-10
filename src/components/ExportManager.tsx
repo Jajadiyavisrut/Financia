@@ -66,40 +66,90 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
 
   const monthOptions = generateMonthOptions();
 
-  const exportToPDF = () => {
-    toast({
-      title: "Export to PDF",
-      description: "PDF export functionality would be implemented here with a proper PDF library.",
-    });
+  const generateCSV = (data: Transaction[], filename: string) => {
+    const headers = ['Date', 'Description', 'Category', 'Amount', 'Payment Method', 'Type'];
+    const csvContent = [
+      headers.join(','),
+      ...data.map(transaction => {
+        const category = categories.find(c => c.id === transaction.categoryId);
+        return [
+          transaction.date,
+          `"${transaction.description}"`,
+          `"${category?.name || 'Unknown'}"`,
+          transaction.amount,
+          transaction.paymentMethod,
+          transaction.type
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const exportToExcel = () => {
-    toast({
-      title: "Export to Excel",
-      description: "Excel export functionality would be implemented here with a proper Excel library.",
-    });
-  };
+  const generateJSON = (data: Transaction[], filename: string) => {
+    const exportData = {
+      exported_at: new Date().toISOString(),
+      data: data.map(transaction => {
+        const category = categories.find(c => c.id === transaction.categoryId);
+        return {
+          ...transaction,
+          categoryName: category?.name || 'Unknown'
+        };
+      }),
+      summary: {
+        total_transactions: data.length,
+        total_income: data.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0),
+        total_expenses: data.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)
+      }
+    };
 
-  const exportToWord = () => {
-    toast({
-      title: "Export to Word",
-      description: "Word export functionality would be implemented here with a proper Word library.",
-    });
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const exportSingleMonth = (format: string) => {
     const monthTransactions = transactions.filter(t => t.date.startsWith(selectedMonth));
-    console.log(`Exporting ${format} for month:`, selectedMonth, monthTransactions);
+    const monthDate = new Date(selectedMonth + '-01');
+    const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    if (monthTransactions.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No transactions found for the selected month.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     switch (format) {
-      case 'pdf':
-        exportToPDF();
+      case 'csv':
+        generateCSV(monthTransactions, `financia-${monthName.replace(' ', '-')}.csv`);
+        toast({
+          title: "Export Successful",
+          description: `CSV file for ${monthName} has been downloaded.`,
+        });
         break;
-      case 'excel':
-        exportToExcel();
-        break;
-      case 'word':
-        exportToWord();
+      case 'json':
+        generateJSON(monthTransactions, `financia-${monthName.replace(' ', '-')}.json`);
+        toast({
+          title: "Export Successful",
+          description: `JSON file for ${monthName} has been downloaded.`,
+        });
         break;
     }
   };
@@ -109,17 +159,34 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
       const transactionMonth = t.date.substring(0, 7);
       return transactionMonth >= startMonth && transactionMonth <= endMonth;
     });
-    console.log(`Exporting ${format} for range:`, startMonth, 'to', endMonth, rangeTransactions);
+    
+    if (rangeTransactions.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No transactions found for the selected date range.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const startDate = new Date(startMonth + '-01');
+    const endDate = new Date(endMonth + '-01');
+    const dateRange = `${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}-to-${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
     
     switch (format) {
-      case 'pdf':
-        exportToPDF();
+      case 'csv':
+        generateCSV(rangeTransactions, `financia-${dateRange}.csv`);
+        toast({
+          title: "Export Successful",
+          description: `CSV file for ${dateRange} has been downloaded.`,
+        });
         break;
-      case 'excel':
-        exportToExcel();
-        break;
-      case 'word':
-        exportToWord();
+      case 'json':
+        generateJSON(rangeTransactions, `financia-${dateRange}.json`);
+        toast({
+          title: "Export Successful",
+          description: `JSON file for ${dateRange} has been downloaded.`,
+        });
         break;
     }
   };
@@ -153,27 +220,23 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
               </Select>
             </div>
             
-            <div className="md:col-span-3 grid grid-cols-3 gap-2">
-              <Button onClick={() => exportSingleMonth('pdf')} variant="outline" className="cyber-glow">
+            <div className="md:col-span-3 grid grid-cols-2 gap-2">
+              <Button onClick={() => exportSingleMonth('csv')} variant="outline" className="cyber-glow">
                 <FileText className="h-4 w-4 mr-2" />
-                PDF
+                CSV
               </Button>
-              <Button onClick={() => exportSingleMonth('excel')} variant="outline" className="cyber-glow">
-                <Sheet className="h-4 w-4 mr-2" />
-                Excel
-              </Button>
-              <Button onClick={() => exportSingleMonth('word')} variant="outline" className="cyber-glow">
+              <Button onClick={() => exportSingleMonth('json')} variant="outline" className="cyber-glow">
                 <File className="h-4 w-4 mr-2" />
-                Word
+                JSON
               </Button>
             </div>
           </div>
         </div>
 
         {/* Date Range Export */}
-        <div className="space-y-4 pt-4 border-t border-white/10">
+        <div className="space-y-4 pt-4 border-t border-border">
           <h3 className="text-md font-semibold">Export Date Range</h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <label className="text-sm font-medium text-muted-foreground mb-2 block">Start Month</label>
               <Select value={startMonth} onValueChange={setStartMonth}>
@@ -206,18 +269,14 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
               </Select>
             </div>
             
-            <div className="md:col-span-3 grid grid-cols-3 gap-2">
-              <Button onClick={() => exportDateRange('pdf')} variant="outline" className="cyber-glow">
+            <div className="md:col-span-2 grid grid-cols-2 gap-2">
+              <Button onClick={() => exportDateRange('csv')} variant="outline" className="cyber-glow">
                 <FileText className="h-4 w-4 mr-2" />
-                PDF
+                CSV
               </Button>
-              <Button onClick={() => exportDateRange('excel')} variant="outline" className="cyber-glow">
-                <Sheet className="h-4 w-4 mr-2" />
-                Excel
-              </Button>
-              <Button onClick={() => exportDateRange('word')} variant="outline" className="cyber-glow">
+              <Button onClick={() => exportDateRange('json')} variant="outline" className="cyber-glow">
                 <File className="h-4 w-4 mr-2" />
-                Word
+                JSON
               </Button>
             </div>
           </div>

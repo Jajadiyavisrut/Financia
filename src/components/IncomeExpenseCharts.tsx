@@ -48,25 +48,28 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347'];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Income vs Expenses Overview */}
       <Card className="glass-card">
-        <CardHeader>
-          <CardTitle>Income vs Expenses Overview</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg">Income vs Expenses Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={overviewData}>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={overviewData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis 
                 dataKey="name" 
                 stroke="hsl(var(--foreground))"
-                fontSize={12}
+                fontSize={11}
+                tick={{ fontSize: 11 }}
               />
               <YAxis 
                 stroke="hsl(var(--foreground))"
-                fontSize={12}
-                tickFormatter={(value) => `₹${value.toLocaleString()}`}
+                fontSize={10}
+                tick={{ fontSize: 10 }}
+                tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                width={50}
               />
               <Tooltip 
                 formatter={(value: number) => [`₹${value.toLocaleString()}`, "Amount"]}
@@ -74,13 +77,18 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
                 contentStyle={{ 
                   backgroundColor: "hsl(var(--background))", 
                   border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px"
+                  borderRadius: "8px",
+                  fontSize: "12px"
                 }}
               />
               <Bar 
                 dataKey="amount" 
                 radius={[4, 4, 0, 0]}
-              />
+              >
+                {overviewData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -88,22 +96,23 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
 
       {/* Expense Category Breakdown */}
       <Card className="glass-card">
-        <CardHeader>
-          <CardTitle>Expense Category Breakdown</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg">Expense Category Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
           {categoryData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={categoryData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
+                  label={({ name, percent }) => percent > 5 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
+                  outerRadius={window.innerWidth < 640 ? 60 : 80}
                   fill="#8884d8"
                   dataKey="amount"
+                  fontSize={10}
                 >
                   {categoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -115,13 +124,14 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
                   contentStyle={{ 
                     backgroundColor: "hsl(var(--background))", 
                     border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px"
+                    borderRadius: "8px",
+                    fontSize: "12px"
                   }}
                 />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
               No expense data for this month
             </div>
           )}

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { CategoryManager } from "./CategoryManager";
 import { BudgetManager } from "./BudgetManager";
 import { TransactionForm } from "./TransactionForm";
@@ -41,48 +43,134 @@ export interface Transaction {
 }
 
 export const BudgetTracker = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const { toast } = useToast();
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  const [categories, setCategories] = useState<Category[]>([
-    { id: "1", name: "Others", color: "#6366f1" },
-    { id: "2", name: "Clothes", color: "#f59e0b" },
-    { id: "3", name: "Educational Fees", color: "#10b981" },
-    { id: "4", name: "Entertainment", color: "#ef4444" },
-    { id: "5", name: "Groceries", color: "#8b5cf6" },
-    { id: "6", name: "Transportation", color: "#06b6d4" },
-    { id: "7", name: "Utility Bills", color: "#f97316" }
-  ]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<Category[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [incomeCategories, setIncomeCategories] = useState<Category[]>([
-    { id: "income-1", name: "Salary", color: "#22c55e" },
-    { id: "income-2", name: "Freelance", color: "#3b82f6" },
-    { id: "income-3", name: "Investment", color: "#8b5cf6" },
-    { id: "income-4", name: "Others", color: "#6366f1" }
-  ]);
+  // Load data from database
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
-  const [budgets, setBudgets] = useState<Budget[]>([
-    { id: "1", categoryId: "2", amount: 5000, month: selectedMonth },
-    { id: "2", categoryId: "3", amount: 8000, month: selectedMonth },
-    { id: "3", categoryId: "4", amount: 3000, month: selectedMonth },
-    { id: "4", categoryId: "5", amount: 10000, month: selectedMonth },
-    { id: "5", categoryId: "6", amount: 3750, month: selectedMonth },
-    { id: "6", categoryId: "7", amount: 6200, month: selectedMonth }
-  ]);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', user?.id);
 
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: "1", categoryId: "5", amount: 140, description: "Sony ebook", date: "2025-01-08", paymentMethod: "cash", type: "expense" },
-    { id: "2", categoryId: "6", amount: 175, description: "Bundle Transportation", date: "2025-01-07", paymentMethod: "cash", type: "expense" },
-    { id: "3", categoryId: "3", amount: 350, description: "Blue Petrol Transportation", date: "2025-01-06", paymentMethod: "online", type: "expense" },
-    { id: "4", categoryId: "4", amount: 2000, description: "expense of Dairy Groceries", date: "2025-01-05", paymentMethod: "cash", type: "expense" },
-    { id: "5", categoryId: "6", amount: 200, description: "RTO card's Recharge Transportation", date: "2025-01-04", paymentMethod: "cash", type: "expense" },
-    { id: "6", categoryId: "5", amount: 110, description: "vegetables from apple Groceries", date: "2025-01-03", paymentMethod: "cash", type: "expense" },
-    { id: "7", categoryId: "income-1", amount: 45000, description: "Monthly Salary", date: "2025-01-01", paymentMethod: "online", type: "income" },
-    { id: "8", categoryId: "income-2", amount: 15000, description: "Website Development Project", date: "2025-01-02", paymentMethod: "online", type: "income" }
-  ]);
+      if (categoriesError) throw categoriesError;
+
+      const expenseCategories = categoriesData?.filter(c => c.type === 'expense') || [];
+      const incomeCategories = categoriesData?.filter(c => c.type === 'income') || [];
+
+      // Set default categories if none exist
+      if (expenseCategories.length === 0) {
+        await initializeDefaultCategories();
+        return loadData(); // Reload data after initialization
+      }
+
+      setCategories(expenseCategories);
+      setIncomeCategories(incomeCategories);
+
+      // Load budgets
+      const { data: budgetsData, error: budgetsError } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (budgetsError) throw budgetsError;
+      
+      // Map budget data to match interface
+      const mappedBudgets = budgetsData?.map(budget => ({
+        id: budget.id,
+        categoryId: budget.category_id,
+        amount: Number(budget.amount),
+        month: budget.month
+      })) || [];
+      setBudgets(mappedBudgets);
+
+      // Load transactions
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (transactionsError) throw transactionsError;
+      
+      // Map transaction data to match interface
+      const mappedTransactions = transactionsData?.map(transaction => ({
+        id: transaction.id,
+        categoryId: transaction.category_id,
+        amount: Number(transaction.amount),
+        description: transaction.description,
+        date: transaction.date,
+        paymentMethod: transaction.payment_method as "cash" | "online" | "card",
+        type: transaction.type as "income" | "expense"
+      })) || [];
+      setTransactions(mappedTransactions);
+
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load data from database",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeDefaultCategories = async () => {
+    const defaultExpenseCategories = [
+      { name: "Others", color: "#6366f1", type: "expense" },
+      { name: "Clothes", color: "#f59e0b", type: "expense" },
+      { name: "Educational Fees", color: "#10b981", type: "expense" },
+      { name: "Entertainment", color: "#ef4444", type: "expense" },
+      { name: "Groceries", color: "#8b5cf6", type: "expense" },
+      { name: "Transportation", color: "#06b6d4", type: "expense" },
+      { name: "Utility Bills", color: "#f97316", type: "expense" }
+    ];
+
+    const defaultIncomeCategories = [
+      { name: "Salary", color: "#22c55e", type: "income" },
+      { name: "Freelance", color: "#3b82f6", type: "income" },
+      { name: "Investment", color: "#8b5cf6", type: "income" },
+      { name: "Others", color: "#6366f1", type: "income" }
+    ];
+
+    const allCategories = [...defaultExpenseCategories, ...defaultIncomeCategories];
+
+    for (const category of allCategories) {
+      await supabase
+        .from('categories')
+        .insert({ ...category, user_id: user?.id });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
 
   const monthlyExpenses = transactions.filter(t => 
     t.type === "expense" && t.date.startsWith(selectedMonth)
@@ -96,21 +184,21 @@ export const BudgetTracker = () => {
   const remaining = totalBudget - monthlyExpenses;
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="container mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen bg-background p-2 sm:p-4">
+      <div className="container mx-auto max-w-7xl space-y-4">
         {/* Header */}
-        <Card className="glass-card p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Card className="glass-card p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary bg-clip-text text-transparent">
                 Financia
               </h1>
-              <p className="text-muted-foreground mt-2">Track your income, expenses, and budgets</p>
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base">Track your income, expenses, and budgets</p>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Select month" />
                 </SelectTrigger>
                 <SelectContent>
@@ -126,49 +214,51 @@ export const BudgetTracker = () => {
                   })}
                 </SelectContent>
               </Select>
-              <ShareDialog 
-                transactions={transactions}
-                categories={[...categories, ...incomeCategories]}
-                budgets={budgets}
-                selectedMonth={selectedMonth}
-              />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={signOut}
-                className="flex items-center gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </Button>
+              <div className="flex gap-2">
+                <ShareDialog 
+                  transactions={transactions}
+                  categories={[...categories, ...incomeCategories]}
+                  budgets={budgets}
+                  selectedMonth={selectedMonth}
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={signOut}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </Button>
+              </div>
             </div>
           </div>
           
           {/* Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Budget</p>
-              <p className="text-2xl font-bold text-cyber-primary">₹{totalBudget.toLocaleString()}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total Budget</p>
+              <p className="text-lg sm:text-2xl font-bold text-cyber-primary">₹{totalBudget.toLocaleString()}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Income</p>
-              <p className="text-2xl font-bold text-cyber-success">₹{monthlyIncome.toLocaleString()}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total Income</p>
+              <p className="text-lg sm:text-2xl font-bold text-cyber-success">₹{monthlyIncome.toLocaleString()}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Expenses</p>
-              <p className="text-2xl font-bold text-cyber-danger">₹{monthlyExpenses.toLocaleString()}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total Expenses</p>
+              <p className="text-lg sm:text-2xl font-bold text-cyber-danger">₹{monthlyExpenses.toLocaleString()}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Remaining</p>
-              <p className={`text-2xl font-bold ${remaining >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
+              <p className="text-xs sm:text-sm text-muted-foreground">Remaining</p>
+              <p className={`text-lg sm:text-2xl font-bold ${remaining >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
                 ₹{remaining.toLocaleString()}
               </p>
             </div>
           </div>
         </Card>
 
-        {/* Second Part - Categories and Budgets Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Categories and Budgets */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <CategoryManager 
             categories={categories} 
             setCategories={setCategories}
@@ -183,16 +273,16 @@ export const BudgetTracker = () => {
           />
         </div>
 
-        {/* Third Part - Income/Expense Tabs with Payment Summary and History */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        {/* Income/Expense Tabs with Payment Summary */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+          <div className="xl:col-span-3">
             <Tabs defaultValue="expense" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="expense">Expenses</TabsTrigger>
                 <TabsTrigger value="income">Income</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="expense" className="space-y-6">
+              <TabsContent value="expense" className="space-y-4">
                 <TransactionForm
                   categories={categories}
                   transactions={transactions}
@@ -208,7 +298,7 @@ export const BudgetTracker = () => {
                 />
               </TabsContent>
               
-              <TabsContent value="income" className="space-y-6">
+              <TabsContent value="income" className="space-y-4">
                 <TransactionForm
                   categories={incomeCategories}
                   transactions={transactions}
@@ -226,7 +316,7 @@ export const BudgetTracker = () => {
             </Tabs>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
             <Analytics 
               transactions={transactions}
@@ -237,20 +327,20 @@ export const BudgetTracker = () => {
           </div>
         </div>
 
-        {/* Fourth Part - Income vs Expense Charts */}
+        {/* Charts */}
         <IncomeExpenseCharts 
           transactions={transactions}
           categories={[...categories, ...incomeCategories]}
           selectedMonth={selectedMonth}
         />
 
-        {/* Fifth Part - Monthly Summary with Date Range */}
+        {/* Monthly Summary */}
         <MonthlySummary 
           transactions={transactions}
           categories={[...categories, ...incomeCategories]}
         />
 
-        {/* Sixth Part - Export Functionality */}
+        {/* Export Functionality */}
         <ExportManager 
           transactions={transactions}
           categories={[...categories, ...incomeCategories]}
@@ -258,8 +348,8 @@ export const BudgetTracker = () => {
         />
 
         {/* Footer */}
-        <footer className="mt-12 py-6 border-t border-border">
-          <div className="text-center text-sm text-muted-foreground">
+        <footer className="mt-8 py-4 border-t border-border">
+          <div className="text-center text-xs sm:text-sm text-muted-foreground">
             <p>&copy; 2025 Financia. All rights reserved. Created by Visrut.</p>
           </div>
         </footer>
