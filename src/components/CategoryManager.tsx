@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Category {
   id: string;
@@ -27,9 +29,11 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
   const [newIncomeCategoryName, setNewIncomeCategoryName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const addCategory = (type: "expense" | "income") => {
+  const addCategory = async (type: "expense" | "income") => {
     const name = type === "expense" ? newCategoryName : newIncomeCategoryName;
     const targetCategories = type === "expense" ? categories : incomeCategories;
     const setTargetCategories = type === "expense" ? setCategories : setIncomeCategories;
@@ -54,17 +58,47 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
       return;
     }
 
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      name: name.trim(),
-      color: colors[targetCategories.length % colors.length]
-    };
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          user_id: user?.id,
+          name: name.trim(),
+          color: colors[targetCategories.length % colors.length],
+          type
+        })
+        .select()
+        .single();
 
-    setTargetCategories([...targetCategories, newCategory]);
-    if (type === "expense") {
-      setNewCategoryName("");
-    } else {
-      setNewIncomeCategoryName("");
+      if (error) throw error;
+
+      const newCategory: Category = {
+        id: data.id,
+        name: data.name,
+        color: data.color
+      };
+
+      setTargetCategories([...targetCategories, newCategory]);
+      if (type === "expense") {
+        setNewCategoryName("");
+      } else {
+        setNewIncomeCategoryName("");
+      }
+
+      toast({
+        title: "Category Added",
+        description: `${name} category created successfully.`,
+      });
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add category. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -178,6 +212,7 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
                 onClick={() => addCategory("expense")} 
                 size="sm"
                 className="cyber-glow"
+                disabled={isLoading}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -203,6 +238,7 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
                 onClick={() => addCategory("income")} 
                 size="sm"
                 className="cyber-glow"
+                disabled={isLoading}
               >
                 <Plus className="h-4 w-4" />
               </Button>

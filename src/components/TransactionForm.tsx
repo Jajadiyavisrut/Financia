@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Category {
   id: string;
@@ -40,9 +42,11 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "online" | "card">("cash");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const addTransaction = () => {
+  const addTransaction = async () => {
     if (!selectedCategory || !amount || !description) {
       toast({
         title: "Missing Information",
@@ -52,29 +56,58 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
       return;
     }
 
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      categoryId: selectedCategory,
-      amount: parseFloat(amount),
-      description: description.trim(),
-      date: format(selectedDate, "yyyy-MM-dd"),
-      paymentMethod,
-      type
-    };
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user?.id,
+          category_id: selectedCategory,
+          amount: parseFloat(amount),
+          description: description.trim(),
+          date: format(selectedDate, "yyyy-MM-dd"),
+          payment_method: paymentMethod,
+          type
+        })
+        .select()
+        .single();
 
-    setTransactions([newTransaction, ...transactions]);
-    
-    // Reset form
-    setSelectedCategory("");
-    setAmount("");
-    setDescription("");
-    setSelectedDate(new Date());
-    setPaymentMethod("cash");
+      if (error) throw error;
 
-    toast({
-      title: `${type === "income" ? "Income" : "Expense"} Added`,
-      description: `Successfully added ₹${amount} ${type}.`,
-    });
+      // Add to local state with correct interface mapping
+      const newTransaction: Transaction = {
+        id: data.id,
+        categoryId: data.category_id,
+        amount: Number(data.amount),
+        description: data.description,
+        date: data.date,
+        paymentMethod: data.payment_method as "cash" | "online" | "card",
+        type: data.type as "income" | "expense"
+      };
+
+      setTransactions([newTransaction, ...transactions]);
+      
+      // Reset form
+      setSelectedCategory("");
+      setAmount("");
+      setDescription("");
+      setSelectedDate(new Date());
+      setPaymentMethod("cash");
+
+      toast({
+        title: `${type === "income" ? "Income" : "Expense"} Added`,
+        description: `Successfully added ₹${amount} ${type}.`,
+      });
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add transaction. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -150,9 +183,9 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
           </SelectContent>
         </Select>
 
-        <Button onClick={addTransaction} className="w-full cyber-glow">
+        <Button onClick={addTransaction} className="w-full cyber-glow" disabled={isLoading}>
           <Plus className="h-4 w-4 mr-2" />
-          Add {type === "income" ? "Income" : "Expense"}
+          {isLoading ? 'Adding...' : `Add ${type === "income" ? "Income" : "Expense"}`}
         </Button>
       </CardContent>
     </Card>

@@ -55,6 +55,7 @@ export const BudgetTracker = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<{ display_name: string | null } | null>(null);
 
   // Load data from database
   useEffect(() => {
@@ -67,7 +68,18 @@ export const BudgetTracker = () => {
     try {
       setLoading(true);
       
-      // Load categories
+      // Load user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profileError && profileData) {
+        setUserProfile(profileData);
+      }
+      
+      // Load categories and remove duplicates
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
@@ -75,8 +87,13 @@ export const BudgetTracker = () => {
 
       if (categoriesError) throw categoriesError;
 
-      const expenseCategories = categoriesData?.filter(c => c.type === 'expense') || [];
-      const incomeCategories = categoriesData?.filter(c => c.type === 'income') || [];
+      // Remove duplicates by name and type, keep the first occurrence
+      const uniqueCategories = categoriesData?.filter((category, index, self) => 
+        index === self.findIndex(c => c.name === category.name && c.type === category.type)
+      ) || [];
+
+      const expenseCategories = uniqueCategories.filter(c => c.type === 'expense');
+      const incomeCategories = uniqueCategories.filter(c => c.type === 'income');
 
       // Set default categories if none exist
       if (expenseCategories.length === 0) {
@@ -193,7 +210,9 @@ export const BudgetTracker = () => {
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary bg-clip-text text-transparent">
                 Financia
               </h1>
-              <p className="text-muted-foreground mt-1 text-sm sm:text-base">Track your income, expenses, and budgets</p>
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+                {userProfile?.display_name ? `Welcome back, ${userProfile.display_name}!` : 'Track your income, expenses, and budgets'}
+              </p>
             </div>
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
@@ -283,35 +302,39 @@ export const BudgetTracker = () => {
               </TabsList>
               
               <TabsContent value="expense" className="space-y-4">
-                <TransactionForm
-                  categories={categories}
-                  transactions={transactions}
-                  setTransactions={setTransactions}
-                  type="expense"
-                />
-                <TransactionHistory
-                  transactions={transactions.filter(t => t.type === "expense")}
-                  categories={categories}
-                  setTransactions={setTransactions}
-                  selectedMonth={selectedMonth}
-                  type="expense"
-                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <TransactionForm
+                    categories={categories}
+                    transactions={transactions}
+                    setTransactions={setTransactions}
+                    type="expense"
+                  />
+                  <TransactionHistory
+                    transactions={transactions.filter(t => t.type === "expense")}
+                    categories={categories}
+                    setTransactions={setTransactions}
+                    selectedMonth={selectedMonth}
+                    type="expense"
+                  />
+                </div>
               </TabsContent>
               
               <TabsContent value="income" className="space-y-4">
-                <TransactionForm
-                  categories={incomeCategories}
-                  transactions={transactions}
-                  setTransactions={setTransactions}
-                  type="income"
-                />
-                <TransactionHistory
-                  transactions={transactions.filter(t => t.type === "income")}
-                  categories={incomeCategories}
-                  setTransactions={setTransactions}
-                  selectedMonth={selectedMonth}
-                  type="income"
-                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <TransactionForm
+                    categories={incomeCategories}
+                    transactions={transactions}
+                    setTransactions={setTransactions}
+                    type="income"
+                  />
+                  <TransactionHistory
+                    transactions={transactions.filter(t => t.type === "income")}
+                    categories={incomeCategories}
+                    setTransactions={setTransactions}
+                    selectedMonth={selectedMonth}
+                    type="income"
+                  />
+                </div>
               </TabsContent>
             </Tabs>
           </div>
