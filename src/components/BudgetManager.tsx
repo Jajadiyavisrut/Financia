@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Category {
   id: string;
@@ -32,10 +34,11 @@ export const BudgetManager = ({ categories, budgets, setBudgets, selectedMonth }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAmount, setEditingAmount] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const monthlyBudgets = budgets.filter(b => b.month === selectedMonth);
 
-  const addBudget = () => {
+  const addBudget = async () => {
     if (!selectedCategory || !amount) {
       toast({
         title: "Missing Information",
@@ -55,20 +58,69 @@ export const BudgetManager = ({ categories, budgets, setBudgets, selectedMonth }
       return;
     }
 
-    const newBudget: Budget = {
-      id: Date.now().toString(),
-      categoryId: selectedCategory,
-      amount: parseFloat(amount),
-      month: selectedMonth
-    };
+    try {
+      const { data, error } = await supabase
+        .from('budgets')
+        .insert({
+          user_id: user?.id,
+          category_id: selectedCategory,
+          amount: parseFloat(amount),
+          month: selectedMonth
+        })
+        .select()
+        .single();
 
-    setBudgets([...budgets, newBudget]);
-    setSelectedCategory("");
-    setAmount("");
+      if (error) throw error;
+
+      const newBudget: Budget = {
+        id: data.id,
+        categoryId: data.category_id,
+        amount: Number(data.amount),
+        month: data.month
+      };
+
+      setBudgets([...budgets, newBudget]);
+      setSelectedCategory("");
+      setAmount("");
+      
+      toast({
+        title: "Budget Added",
+        description: "Budget has been set successfully.",
+      });
+    } catch (error) {
+      console.error('Error adding budget:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add budget. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const deleteBudget = (id: string) => {
-    setBudgets(budgets.filter(b => b.id !== id));
+  const deleteBudget = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('budgets')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setBudgets(budgets.filter(b => b.id !== id));
+      
+      toast({
+        title: "Budget Deleted",
+        description: "Budget has been removed successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete budget. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const startEditing = (budget: Budget) => {
@@ -76,14 +128,36 @@ export const BudgetManager = ({ categories, budgets, setBudgets, selectedMonth }
     setEditingAmount(budget.amount.toString());
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingAmount) return;
     
-    setBudgets(budgets.map(b => 
-      b.id === editingId ? { ...b, amount: parseFloat(editingAmount) } : b
-    ));
-    setEditingId(null);
-    setEditingAmount("");
+    try {
+      const { error } = await supabase
+        .from('budgets')
+        .update({ amount: parseFloat(editingAmount) })
+        .eq('id', editingId)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setBudgets(budgets.map(b => 
+        b.id === editingId ? { ...b, amount: parseFloat(editingAmount) } : b
+      ));
+      setEditingId(null);
+      setEditingAmount("");
+      
+      toast({
+        title: "Budget Updated",
+        description: "Budget has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update budget. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const availableCategories = categories.filter(

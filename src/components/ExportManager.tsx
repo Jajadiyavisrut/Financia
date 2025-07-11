@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileText, File, Sheet } from "lucide-react";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface Category {
   id: string;
@@ -66,60 +69,86 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
 
   const monthOptions = generateMonthOptions();
 
-  const generateCSV = (data: Transaction[], filename: string) => {
-    const headers = ['Date', 'Description', 'Category', 'Amount', 'Payment Method', 'Type'];
-    const csvContent = [
-      headers.join(','),
-      ...data.map(transaction => {
-        const category = categories.find(c => c.id === transaction.categoryId);
-        return [
-          transaction.date,
-          `"${transaction.description}"`,
-          `"${category?.name || 'Unknown'}"`,
-          transaction.amount,
-          transaction.paymentMethod,
-          transaction.type
-        ].join(',');
-      })
-    ].join('\n');
+  const generateExcel = (data: Transaction[], filename: string) => {
+    const worksheetData = data.map(transaction => {
+      const category = categories.find(c => c.id === transaction.categoryId);
+      return {
+        Date: transaction.date,
+        Description: transaction.description,
+        Category: category?.name || 'Unknown',
+        Amount: transaction.amount,
+        'Payment Method': transaction.paymentMethod,
+        Type: transaction.type
+      };
+    });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Transactions');
+    
+    // Set column widths
+    const colWidths = [
+      { wch: 12 }, // Date
+      { wch: 30 }, // Description
+      { wch: 15 }, // Category
+      { wch: 12 }, // Amount
+      { wch: 15 }, // Payment Method
+      { wch: 10 }  // Type
+    ];
+    worksheet['!cols'] = colWidths;
+
+    XLSX.writeFile(workbook, filename);
   };
 
-  const generateJSON = (data: Transaction[], filename: string) => {
-    const exportData = {
-      exported_at: new Date().toISOString(),
-      data: data.map(transaction => {
-        const category = categories.find(c => c.id === transaction.categoryId);
-        return {
-          ...transaction,
-          categoryName: category?.name || 'Unknown'
-        };
-      }),
-      summary: {
-        total_transactions: data.length,
-        total_income: data.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0),
-        total_expenses: data.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)
-      }
-    };
+  const generatePDF = (data: Transaction[], filename: string) => {
+    const pdf = new jsPDF();
+    
+    // Add title
+    pdf.setFontSize(20);
+    pdf.text('Financia - Transaction Report', 20, 20);
+    
+    // Add summary
+    const totalIncome = data.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = data.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const netBalance = totalIncome - totalExpenses;
+    
+    pdf.setFontSize(12);
+    pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 35);
+    pdf.text(`Total Transactions: ${data.length}`, 20, 45);
+    pdf.text(`Total Income: ₹${totalIncome.toLocaleString()}`, 20, 55);
+    pdf.text(`Total Expenses: ₹${totalExpenses.toLocaleString()}`, 20, 65);
+    pdf.text(`Net Balance: ₹${netBalance.toLocaleString()}`, 20, 75);
+    
+    // Prepare table data
+    const tableData = data.map(transaction => {
+      const category = categories.find(c => c.id === transaction.categoryId);
+      return [
+        transaction.date,
+        transaction.description,
+        category?.name || 'Unknown',
+        `₹${transaction.amount.toLocaleString()}`,
+        transaction.paymentMethod,
+        transaction.type
+      ];
+    });
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Add table
+    (pdf as any).autoTable({
+      head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method', 'Type']],
+      body: tableData,
+      startY: 85,
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 50 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 20 }
+      }
+    });
+
+    pdf.save(filename);
   };
 
   const exportSingleMonth = (format: string) => {
@@ -137,18 +166,18 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
     }
     
     switch (format) {
-      case 'csv':
-        generateCSV(monthTransactions, `financia-${monthName.replace(' ', '-')}.csv`);
+      case 'excel':
+        generateExcel(monthTransactions, `financia-${monthName.replace(' ', '-')}.xlsx`);
         toast({
           title: "Export Successful",
-          description: `CSV file for ${monthName} has been downloaded.`,
+          description: `Excel file for ${monthName} has been downloaded.`,
         });
         break;
-      case 'json':
-        generateJSON(monthTransactions, `financia-${monthName.replace(' ', '-')}.json`);
+      case 'pdf':
+        generatePDF(monthTransactions, `financia-${monthName.replace(' ', '-')}.pdf`);
         toast({
           title: "Export Successful",
-          description: `JSON file for ${monthName} has been downloaded.`,
+          description: `PDF file for ${monthName} has been downloaded.`,
         });
         break;
     }
@@ -174,18 +203,18 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
     const dateRange = `${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}-to-${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
     
     switch (format) {
-      case 'csv':
-        generateCSV(rangeTransactions, `financia-${dateRange}.csv`);
+      case 'excel':
+        generateExcel(rangeTransactions, `financia-${dateRange}.xlsx`);
         toast({
           title: "Export Successful",
-          description: `CSV file for ${dateRange} has been downloaded.`,
+          description: `Excel file for ${dateRange} has been downloaded.`,
         });
         break;
-      case 'json':
-        generateJSON(rangeTransactions, `financia-${dateRange}.json`);
+      case 'pdf':
+        generatePDF(rangeTransactions, `financia-${dateRange}.pdf`);
         toast({
           title: "Export Successful",
-          description: `JSON file for ${dateRange} has been downloaded.`,
+          description: `PDF file for ${dateRange} has been downloaded.`,
         });
         break;
     }
@@ -221,13 +250,13 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
             </div>
             
             <div className="md:col-span-3 grid grid-cols-2 gap-2">
-              <Button onClick={() => exportSingleMonth('csv')} variant="outline" className="cyber-glow">
-                <FileText className="h-4 w-4 mr-2" />
-                CSV
+              <Button onClick={() => exportSingleMonth('excel')} variant="outline" className="cyber-glow">
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel
               </Button>
-              <Button onClick={() => exportSingleMonth('json')} variant="outline" className="cyber-glow">
-                <File className="h-4 w-4 mr-2" />
-                JSON
+              <Button onClick={() => exportSingleMonth('pdf')} variant="outline" className="cyber-glow">
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
               </Button>
             </div>
           </div>
@@ -270,13 +299,13 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
             </div>
             
             <div className="md:col-span-2 grid grid-cols-2 gap-2">
-              <Button onClick={() => exportDateRange('csv')} variant="outline" className="cyber-glow">
-                <FileText className="h-4 w-4 mr-2" />
-                CSV
+              <Button onClick={() => exportDateRange('excel')} variant="outline" className="cyber-glow">
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel
               </Button>
-              <Button onClick={() => exportDateRange('json')} variant="outline" className="cyber-glow">
-                <File className="h-4 w-4 mr-2" />
-                JSON
+              <Button onClick={() => exportDateRange('pdf')} variant="outline" className="cyber-glow">
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
               </Button>
             </div>
           </div>

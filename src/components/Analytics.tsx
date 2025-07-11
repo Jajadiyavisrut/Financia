@@ -118,7 +118,7 @@ export const Analytics = ({ transactions, categories, budgets, selectedMonth }: 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Budget vs Actual Chart */}
       <Card className="glass-card">
         <CardHeader>
@@ -128,18 +128,18 @@ export const Analytics = ({ transactions, categories, budgets, selectedMonth }: 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={budgetVsActualData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis 
                 dataKey="category" 
                 stroke="hsl(var(--foreground))"
-                fontSize={12}
+                fontSize={10}
                 angle={-45}
                 textAnchor="end"
-                height={80}
+                height={60}
               />
-              <YAxis stroke="hsl(var(--foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--foreground))" fontSize={10} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="budget" fill="hsl(var(--cyber-primary))" name="Budget" />
               <Bar dataKey="actual" fill="hsl(var(--cyber-danger))" name="Actual" />
@@ -148,97 +148,100 @@ export const Analytics = ({ transactions, categories, budgets, selectedMonth }: 
         </CardContent>
       </Card>
 
-      {/* Expense Distribution */}
-      {expenseDistributionData.length > 0 && (
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <PieChartIcon className="h-5 w-5" />
-              Expense Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={expenseDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {expenseDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip content={<PieTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-4 space-y-2">
-              {expenseDistributionData.map((entry, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: entry.color }}
-                    />
-                    <span>{entry.name}</span>
+      {/* Income and Expense Distribution side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Expense Distribution */}
+        {expenseDistributionData.length > 0 && (
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <PieChartIcon className="h-4 w-4" />
+                Expense Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={expenseDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={60}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {expenseDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-2 space-y-1">
+                {expenseDistributionData.map((entry, index) => (
+                  <div key={index} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1">
+                      <div 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <span>{entry.name}</span>
+                    </div>
+                    <span className="font-medium">₹{entry.value.toLocaleString()}</span>
                   </div>
-                  <span className="font-medium">₹{entry.value.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Income Distribution */}
-      {incomeDistributionData.length > 0 && (
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <PieChartIcon className="h-5 w-5" />
-              Income Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={incomeDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {incomeDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip content={<PieTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-4 space-y-2">
-              {incomeDistributionData.map((entry, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: entry.color }}
-                    />
-                    <span>{entry.name}</span>
+        {/* Income Distribution */}
+        {incomeDistributionData.length > 0 && (
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <PieChartIcon className="h-4 w-4" />
+                Income Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={incomeDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={30}
+                    outerRadius={60}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {incomeDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-2 space-y-1">
+                {incomeDistributionData.map((entry, index) => (
+                  <div key={index} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1">
+                      <div 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <span>{entry.name}</span>
+                    </div>
+                    <span className="font-medium">₹{entry.value.toLocaleString()}</span>
                   </div>
-                  <span className="font-medium">₹{entry.value.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

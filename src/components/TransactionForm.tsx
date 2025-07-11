@@ -33,9 +33,10 @@ interface TransactionFormProps {
   transactions: Transaction[];
   setTransactions: (transactions: Transaction[]) => void;
   type: "income" | "expense";
+  onDataChange?: () => void;
 }
 
-export const TransactionForm = ({ categories, transactions, setTransactions, type }: TransactionFormProps) => {
+export const TransactionForm = ({ categories, transactions, setTransactions, type, onDataChange }: TransactionFormProps) => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -86,6 +87,11 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
       };
 
       setTransactions([newTransaction, ...transactions]);
+      
+      // Trigger data reload for real-time updates
+      if (onDataChange) {
+        onDataChange();
+      }
       
       // Reset form
       setSelectedCategory("");

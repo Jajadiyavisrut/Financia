@@ -292,7 +292,7 @@ export const BudgetTracker = () => {
           />
         </div>
 
-        {/* Income/Expense Tabs with Payment Summary */}
+        {/* Income/Expense Tabs with Payment Summary and Budget Analysis */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
           <div className="xl:col-span-3">
             <Tabs defaultValue="expense" className="w-full">
@@ -308,6 +308,7 @@ export const BudgetTracker = () => {
                     transactions={transactions}
                     setTransactions={setTransactions}
                     type="expense"
+                    onDataChange={loadData}
                   />
                   <TransactionHistory
                     transactions={transactions.filter(t => t.type === "expense")}
@@ -315,6 +316,7 @@ export const BudgetTracker = () => {
                     setTransactions={setTransactions}
                     selectedMonth={selectedMonth}
                     type="expense"
+                    onDataChange={loadData}
                   />
                 </div>
               </TabsContent>
@@ -326,6 +328,7 @@ export const BudgetTracker = () => {
                     transactions={transactions}
                     setTransactions={setTransactions}
                     type="income"
+                    onDataChange={loadData}
                   />
                   <TransactionHistory
                     transactions={transactions.filter(t => t.type === "income")}
@@ -333,6 +336,7 @@ export const BudgetTracker = () => {
                     setTransactions={setTransactions}
                     selectedMonth={selectedMonth}
                     type="income"
+                    onDataChange={loadData}
                   />
                 </div>
               </TabsContent>
@@ -340,13 +344,16 @@ export const BudgetTracker = () => {
           </div>
 
           <div className="space-y-4">
-            <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
-            <Analytics 
-              transactions={transactions}
-              categories={[...categories, ...incomeCategories]}
-              budgets={budgets}
-              selectedMonth={selectedMonth}
-            />
+            {/* Payment Method Summary and Budget vs Actual side by side */}
+            <div className="grid grid-cols-1 gap-4">
+              <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
+              <Analytics 
+                transactions={transactions}
+                categories={[...categories, ...incomeCategories]}
+                budgets={budgets}
+                selectedMonth={selectedMonth}
+              />
+            </div>
           </div>
         </div>
 

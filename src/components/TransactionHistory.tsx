@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Edit2, Trash2, History, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Category {
   id: string;
@@ -33,6 +35,7 @@ interface TransactionHistoryProps {
   selectedMonth: string;
   type: "income" | "expense";
   readOnly?: boolean;
+  onDataChange?: () => void;
 }
 
 export const TransactionHistory = ({ 
@@ -41,7 +44,8 @@ export const TransactionHistory = ({
   setTransactions, 
   selectedMonth,
   type,
-  readOnly = false
+  readOnly = false,
+  onDataChange
 }: TransactionHistoryProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingAmount, setEditingAmount] = useState("");
@@ -50,17 +54,41 @@ export const TransactionHistory = ({
   const [editingDate, setEditingDate] = useState<Date>(new Date());
   const [editingPaymentMethod, setEditingPaymentMethod] = useState<"cash" | "online" | "card">("cash");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const filteredTransactions = transactions.filter(t => 
     t.date.startsWith(selectedMonth) && t.type === type
   ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const deleteTransaction = (id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
-    toast({
-      title: `${type === "income" ? "Income" : "Expense"} Deleted`,
-      description: "Transaction has been removed successfully.",
-    });
+  const deleteTransaction = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setTransactions(transactions.filter(t => t.id !== id));
+      
+      // Trigger data reload for real-time updates
+      if (onDataChange) {
+        onDataChange();
+      }
+      
+      toast({
+        title: `${type === "income" ? "Income" : "Expense"} Deleted`,
+        description: "Transaction has been removed successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete transaction. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const startEditing = (transaction: Transaction) => {
@@ -72,30 +100,59 @@ export const TransactionHistory = ({
     setEditingPaymentMethod(transaction.paymentMethod);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingAmount || !editingDescription || !editingCategory) return;
     
-    setTransactions(transactions.map(t => 
-      t.id === editingId ? { 
-        ...t, 
-        amount: parseFloat(editingAmount),
-        description: editingDescription.trim(),
-        categoryId: editingCategory,
-        date: format(editingDate, "yyyy-MM-dd"),
-        paymentMethod: editingPaymentMethod
-      } : t
-    ));
-    setEditingId(null);
-    setEditingAmount("");
-    setEditingDescription("");
-    setEditingCategory("");
-    setEditingDate(new Date());
-    setEditingPaymentMethod("cash");
-    
-    toast({
-      title: `${type === "income" ? "Income" : "Expense"} Updated`,
-      description: "Transaction has been updated successfully.",
-    });
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({
+          category_id: editingCategory,
+          amount: parseFloat(editingAmount),
+          description: editingDescription.trim(),
+          date: format(editingDate, "yyyy-MM-dd"),
+          payment_method: editingPaymentMethod
+        })
+        .eq('id', editingId)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setTransactions(transactions.map(t => 
+        t.id === editingId ? { 
+          ...t, 
+          amount: parseFloat(editingAmount),
+          description: editingDescription.trim(),
+          categoryId: editingCategory,
+          date: format(editingDate, "yyyy-MM-dd"),
+          paymentMethod: editingPaymentMethod
+        } : t
+      ));
+      
+      setEditingId(null);
+      setEditingAmount("");
+      setEditingDescription("");
+      setEditingCategory("");
+      setEditingDate(new Date());
+      setEditingPaymentMethod("cash");
+      
+      // Trigger data reload for real-time updates
+      if (onDataChange) {
+        onDataChange();
+      }
+      
+      toast({
+        title: `${type === "income" ? "Income" : "Expense"} Updated`,
+        description: "Transaction has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update transaction. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getPaymentMethodColor = (method: string) => {

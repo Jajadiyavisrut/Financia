@@ -11,19 +11,23 @@ interface IncomeExpenseChartsProps {
 export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }: IncomeExpenseChartsProps) => {
   const monthlyTransactions = transactions.filter(t => t.date.startsWith(selectedMonth));
   
-  // Income vs Expenses Overview Data
-  const incomeTotal = monthlyTransactions
-    .filter(t => t.type === "income")
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const expenseTotal = monthlyTransactions
-    .filter(t => t.type === "expense")
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const overviewData = [
-    { name: "Income", amount: incomeTotal, fill: "hsl(var(--cyber-success))" },
-    { name: "Expenses", amount: expenseTotal, fill: "hsl(var(--cyber-danger))" }
-  ];
+  // Category-wise Income vs Expense Data
+  const categoryWiseData = categories.map(category => {
+    const incomeAmount = monthlyTransactions
+      .filter(t => t.type === "income" && t.categoryId === category.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const expenseAmount = monthlyTransactions
+      .filter(t => t.type === "expense" && t.categoryId === category.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    return {
+      category: category.name,
+      income: incomeAmount,
+      expense: expenseAmount,
+      color: category.color
+    };
+  }).filter(item => item.income > 0 || item.expense > 0);
 
   // Expense Category Breakdown Data
   const expenseCategories = monthlyTransactions
@@ -49,48 +53,50 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Income vs Expenses Overview */}
+      {/* Category-wise Income vs Expense */}
       <Card className="glass-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Income vs Expenses Overview</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Category-wise Income vs Expense</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={overviewData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="name" 
-                stroke="hsl(var(--foreground))"
-                fontSize={11}
-                tick={{ fontSize: 11 }}
-              />
-              <YAxis 
-                stroke="hsl(var(--foreground))"
-                fontSize={10}
-                tick={{ fontSize: 10 }}
-                tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
-                width={50}
-              />
-              <Tooltip 
-                formatter={(value: number) => [`₹${value.toLocaleString()}`, "Amount"]}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-                contentStyle={{ 
-                  backgroundColor: "hsl(var(--background))", 
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  fontSize: "12px"
-                }}
-              />
-              <Bar 
-                dataKey="amount" 
-                radius={[4, 4, 0, 0]}
-              >
-                {overviewData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {categoryWiseData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={categoryWiseData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="category" 
+                  stroke="hsl(var(--foreground))"
+                  fontSize={10}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis 
+                  stroke="hsl(var(--foreground))"
+                  fontSize={10}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                  width={50}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [`₹${value.toLocaleString()}`, name === 'income' ? 'Income' : 'Expense']}
+                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--background))", 
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "12px"
+                  }}
+                />
+                <Bar dataKey="income" fill="hsl(var(--cyber-success))" name="Income" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="expense" fill="hsl(var(--cyber-danger))" name="Expense" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+              No transaction data for this month
+            </div>
+          )}
         </CardContent>
       </Card>
 
