@@ -1,14 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, PieChart, TrendingUp, FileText, Settings, Plus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface NavigationProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeSection: string;
 }
 
-export const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
+export const Navigation = ({ activeSection }: NavigationProps) => {
   const navItems = [
     {
       id: "dashboard",
@@ -48,27 +46,43 @@ export const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
     }
   ];
 
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const navHeight = 120; // Account for sticky nav height
+      const elementPosition = element.offsetTop - navHeight;
+      window.scrollTo({
+        top: elementPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
-    <Card className="glass-card p-4 mb-6">
-      <div className="flex flex-wrap gap-2">
-        {navItems.map((item) => {
-          const IconComponent = item.icon;
-          return (
-            <Button
-              key={item.id}
-              variant={activeTab === item.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => onTabChange(item.id)}
-              className={`flex items-center gap-2 ${
-                activeTab === item.id ? "cyber-glow" : "hover:cyber-glow"
-              }`}
-            >
-              <IconComponent className="h-4 w-4" />
-              <span className="hidden sm:inline">{item.label}</span>
-            </Button>
-          );
-        })}
-      </div>
-    </Card>
+    <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      <Card className="glass-card p-4 mx-2 sm:mx-4 mb-0 border-x-0 border-t-0">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex flex-wrap gap-2">
+            {navItems.map((item) => {
+              const IconComponent = item.icon;
+              return (
+                <Button
+                  key={item.id}
+                  variant={activeSection === item.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => scrollToSection(item.id)}
+                  className={`flex items-center gap-2 ${
+                    activeSection === item.id ? "cyber-glow" : "hover:cyber-glow"
+                  }`}
+                >
+                  <IconComponent className="h-4 w-4" />
+                  <span className="hidden sm:inline">{item.label}</span>
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 };
