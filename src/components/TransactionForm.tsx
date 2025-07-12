@@ -34,9 +34,10 @@ interface TransactionFormProps {
   setTransactions: (transactions: Transaction[]) => void;
   type: "income" | "expense";
   onDataChange?: () => void;
+  selectedMonth: string;
 }
 
-export const TransactionForm = ({ categories, transactions, setTransactions, type, onDataChange }: TransactionFormProps) => {
+export const TransactionForm = ({ categories, transactions, setTransactions, type, onDataChange, selectedMonth }: TransactionFormProps) => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -52,6 +53,18 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if date is in the future
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    if (selectedDate > today) {
+      toast({
+        title: "Invalid Date",
+        description: "Cannot add future transactions.",
         variant: "destructive"
       });
       return;
@@ -173,7 +186,21 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
                 setSelectedDate(date || new Date());
                 setDatePickerOpen(false);
               }}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(23, 59, 59, 999);
+                // Disable future dates
+                if (date > today) return true;
+                
+                // Only allow dates in the selected month
+                const selectedMonthDate = new Date(selectedMonth + '-01');
+                const monthStart = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth(), 1);
+                const monthEnd = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + 1, 0);
+                
+                return date < monthStart || date > monthEnd;
+              }}
               initialFocus
+              className="pointer-events-auto"
             />
           </PopoverContent>
         </Popover>

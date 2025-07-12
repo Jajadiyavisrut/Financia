@@ -7,6 +7,8 @@ import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Navigation } from "./Navigation";
+import { MonthYearPicker } from "./MonthYearPicker";
 import { CategoryManager } from "./CategoryManager";
 import { BudgetManager } from "./BudgetManager";
 import { TransactionForm } from "./TransactionForm";
@@ -45,6 +47,7 @@ export interface Transaction {
 export const BudgetTracker = () => {
   const { signOut, user } = useAuth();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -200,6 +203,155 @@ export const BudgetTracker = () => {
   const totalBudget = budgets.filter(b => b.month === selectedMonth).reduce((sum, b) => sum + b.amount, 0);
   const remaining = totalBudget - monthlyExpenses;
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <Card className="glass-card p-4 text-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Budget</p>
+                <p className="text-lg sm:text-2xl font-bold text-cyber-primary">₹{totalBudget.toLocaleString()}</p>
+              </Card>
+              <Card className="glass-card p-4 text-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Income</p>
+                <p className="text-lg sm:text-2xl font-bold text-cyber-success">₹{monthlyIncome.toLocaleString()}</p>
+              </Card>
+              <Card className="glass-card p-4 text-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Expenses</p>
+                <p className="text-lg sm:text-2xl font-bold text-cyber-danger">₹{monthlyExpenses.toLocaleString()}</p>
+              </Card>
+              <Card className="glass-card p-4 text-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Remaining</p>
+                <p className={`text-lg sm:text-2xl font-bold ${remaining >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
+                  ₹{remaining.toLocaleString()}
+                </p>
+              </Card>
+            </div>
+            
+            {/* Quick Overview */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
+              <Analytics 
+                transactions={transactions}
+                categories={[...categories, ...incomeCategories]}
+                budgets={budgets}
+                selectedMonth={selectedMonth}
+              />
+            </div>
+          </div>
+        );
+
+      case "transactions":
+        return (
+          <Tabs defaultValue="expense" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="expense">Expenses</TabsTrigger>
+              <TabsTrigger value="income">Income</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="expense" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <TransactionForm
+                  categories={categories}
+                  transactions={transactions}
+                  setTransactions={setTransactions}
+                  type="expense"
+                  onDataChange={loadData}
+                  selectedMonth={selectedMonth}
+                />
+                <TransactionHistory
+                  transactions={transactions.filter(t => t.type === "expense")}
+                  categories={categories}
+                  setTransactions={setTransactions}
+                  selectedMonth={selectedMonth}
+                  type="expense"
+                  onDataChange={loadData}
+                />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="income" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <TransactionForm
+                  categories={incomeCategories}
+                  transactions={transactions}
+                  setTransactions={setTransactions}
+                  type="income"
+                  onDataChange={loadData}
+                  selectedMonth={selectedMonth}
+                />
+                <TransactionHistory
+                  transactions={transactions.filter(t => t.type === "income")}
+                  categories={incomeCategories}
+                  setTransactions={setTransactions}
+                  selectedMonth={selectedMonth}
+                  type="income"
+                  onDataChange={loadData}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+        );
+
+      case "analytics":
+        return (
+          <IncomeExpenseCharts 
+            transactions={transactions}
+            categories={[...categories, ...incomeCategories]}
+            selectedMonth={selectedMonth}
+          />
+        );
+
+      case "reports":
+        return (
+          <MonthlySummary 
+            transactions={transactions}
+            categories={[...categories, ...incomeCategories]}
+          />
+        );
+
+      case "export":
+        return (
+          <ExportManager 
+            transactions={transactions}
+            categories={[...categories, ...incomeCategories]}
+            budgets={budgets}
+          />
+        );
+
+      case "settings":
+        return (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <CategoryManager 
+                categories={categories} 
+                setCategories={setCategories}
+                incomeCategories={incomeCategories}
+                setIncomeCategories={setIncomeCategories}
+              />
+            </div>
+            <div className="space-y-4">
+              <BudgetManager 
+                categories={categories}
+                budgets={budgets}
+                setBudgets={setBudgets}
+                selectedMonth={selectedMonth}
+              />
+              <MonthYearPicker 
+                selectedMonth={selectedMonth}
+                onMonthChange={setSelectedMonth}
+              />
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-2 sm:p-4">
       <div className="container mx-auto max-w-7xl space-y-4">
@@ -216,23 +368,12 @@ export const BudgetTracker = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Select month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({length: 12}, (_, i) => {
-                    const date = new Date();
-                    date.setMonth(i);
-                    const value = `${date.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
-                    return (
-                      <SelectItem key={value} value={value}>
-                        {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">Selected Month</p>
+                <p className="font-semibold text-cyber-primary">
+                  {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </p>
+              </div>
               <div className="flex gap-2">
                 <ShareDialog 
                   transactions={transactions}
@@ -252,130 +393,13 @@ export const BudgetTracker = () => {
               </div>
             </div>
           </div>
-          
-          {/* Summary */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6">
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground">Total Budget</p>
-              <p className="text-lg sm:text-2xl font-bold text-cyber-primary">₹{totalBudget.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground">Total Income</p>
-              <p className="text-lg sm:text-2xl font-bold text-cyber-success">₹{monthlyIncome.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground">Total Expenses</p>
-              <p className="text-lg sm:text-2xl font-bold text-cyber-danger">₹{monthlyExpenses.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground">Remaining</p>
-              <p className={`text-lg sm:text-2xl font-bold ${remaining >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
-                ₹{remaining.toLocaleString()}
-              </p>
-            </div>
-          </div>
         </Card>
 
-        {/* Categories and Budgets */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <CategoryManager 
-            categories={categories} 
-            setCategories={setCategories}
-            incomeCategories={incomeCategories}
-            setIncomeCategories={setIncomeCategories}
-          />
-          <BudgetManager 
-            categories={categories}
-            budgets={budgets}
-            setBudgets={setBudgets}
-            selectedMonth={selectedMonth}
-          />
-        </div>
+        {/* Navigation */}
+        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {/* Income/Expense Tabs with Payment Summary and Budget Analysis */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-          <div className="xl:col-span-3">
-            <Tabs defaultValue="expense" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="expense">Expenses</TabsTrigger>
-                <TabsTrigger value="income">Income</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="expense" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <TransactionForm
-                    categories={categories}
-                    transactions={transactions}
-                    setTransactions={setTransactions}
-                    type="expense"
-                    onDataChange={loadData}
-                  />
-                  <TransactionHistory
-                    transactions={transactions.filter(t => t.type === "expense")}
-                    categories={categories}
-                    setTransactions={setTransactions}
-                    selectedMonth={selectedMonth}
-                    type="expense"
-                    onDataChange={loadData}
-                  />
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="income" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <TransactionForm
-                    categories={incomeCategories}
-                    transactions={transactions}
-                    setTransactions={setTransactions}
-                    type="income"
-                    onDataChange={loadData}
-                  />
-                  <TransactionHistory
-                    transactions={transactions.filter(t => t.type === "income")}
-                    categories={incomeCategories}
-                    setTransactions={setTransactions}
-                    selectedMonth={selectedMonth}
-                    type="income"
-                    onDataChange={loadData}
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          <div className="space-y-4">
-            {/* Payment Method Summary and Budget vs Actual side by side */}
-            <div className="grid grid-cols-1 gap-4">
-              <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
-              <Analytics 
-                transactions={transactions}
-                categories={[...categories, ...incomeCategories]}
-                budgets={budgets}
-                selectedMonth={selectedMonth}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Charts */}
-        <IncomeExpenseCharts 
-          transactions={transactions}
-          categories={[...categories, ...incomeCategories]}
-          selectedMonth={selectedMonth}
-        />
-
-        {/* Monthly Summary */}
-        <MonthlySummary 
-          transactions={transactions}
-          categories={[...categories, ...incomeCategories]}
-        />
-
-        {/* Export Functionality */}
-        <ExportManager 
-          transactions={transactions}
-          categories={[...categories, ...incomeCategories]}
-          budgets={budgets}
-        />
+        {/* Content */}
+        {renderContent()}
 
         {/* Footer */}
         <footer className="mt-8 py-4 border-t border-border">

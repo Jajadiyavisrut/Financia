@@ -70,32 +70,64 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
   const monthOptions = generateMonthOptions();
 
   const generateExcel = (data: Transaction[], filename: string) => {
-    const worksheetData = data.map(transaction => {
+    // Separate income and expense data
+    const incomeData = data.filter(t => t.type === 'income').map(transaction => {
       const category = categories.find(c => c.id === transaction.categoryId);
       return {
         Date: transaction.date,
         Description: transaction.description,
         Category: category?.name || 'Unknown',
         Amount: transaction.amount,
-        'Payment Method': transaction.paymentMethod,
-        Type: transaction.type
+        'Payment Method': transaction.paymentMethod
       };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const expenseData = data.filter(t => t.type === 'expense').map(transaction => {
+      const category = categories.find(c => c.id === transaction.categoryId);
+      return {
+        Date: transaction.date,
+        Description: transaction.description,
+        Category: category?.name || 'Unknown',
+        Amount: transaction.amount,
+        'Payment Method': transaction.paymentMethod
+      };
+    });
+
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Transactions');
     
-    // Set column widths
-    const colWidths = [
-      { wch: 12 }, // Date
-      { wch: 30 }, // Description
-      { wch: 15 }, // Category
-      { wch: 12 }, // Amount
-      { wch: 15 }, // Payment Method
-      { wch: 10 }  // Type
+    // Add Income sheet
+    if (incomeData.length > 0) {
+      const incomeWorksheet = XLSX.utils.json_to_sheet(incomeData);
+      const colWidths = [
+        { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }
+      ];
+      incomeWorksheet['!cols'] = colWidths;
+      XLSX.utils.book_append_sheet(workbook, incomeWorksheet, 'Income');
+    }
+    
+    // Add Expense sheet
+    if (expenseData.length > 0) {
+      const expenseWorksheet = XLSX.utils.json_to_sheet(expenseData);
+      const colWidths = [
+        { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 15 }
+      ];
+      expenseWorksheet['!cols'] = colWidths;
+      XLSX.utils.book_append_sheet(workbook, expenseWorksheet, 'Expenses');
+    }
+
+    // Add Summary sheet
+    const totalIncome = incomeData.reduce((sum, t) => sum + t.Amount, 0);
+    const totalExpenses = expenseData.reduce((sum, t) => sum + t.Amount, 0);
+    const summaryData = [
+      { Metric: 'Total Income', Amount: totalIncome },
+      { Metric: 'Total Expenses', Amount: totalExpenses },
+      { Metric: 'Net Balance', Amount: totalIncome - totalExpenses },
+      { Metric: 'Income Transactions', Amount: incomeData.length },
+      { Metric: 'Expense Transactions', Amount: expenseData.length }
     ];
-    worksheet['!cols'] = colWidths;
+    const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
+    summaryWorksheet['!cols'] = [{ wch: 20 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary');
 
     XLSX.writeFile(workbook, filename);
   };
@@ -108,45 +140,92 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
     pdf.text('Financia - Transaction Report', 20, 20);
     
     // Add summary
-    const totalIncome = data.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = data.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const incomeData = data.filter(t => t.type === 'income');
+    const expenseData = data.filter(t => t.type === 'expense');
+    const totalIncome = incomeData.reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = expenseData.reduce((sum, t) => sum + t.amount, 0);
     const netBalance = totalIncome - totalExpenses;
     
     pdf.setFontSize(12);
     pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 35);
-    pdf.text(`Total Transactions: ${data.length}`, 20, 45);
-    pdf.text(`Total Income: ₹${totalIncome.toLocaleString()}`, 20, 55);
-    pdf.text(`Total Expenses: ₹${totalExpenses.toLocaleString()}`, 20, 65);
-    pdf.text(`Net Balance: ₹${netBalance.toLocaleString()}`, 20, 75);
+    pdf.text(`Total Income: ₹${totalIncome.toLocaleString()} (${incomeData.length} transactions)`, 20, 45);
+    pdf.text(`Total Expenses: ₹${totalExpenses.toLocaleString()} (${expenseData.length} transactions)`, 20, 55);
+    pdf.text(`Net Balance: ₹${netBalance.toLocaleString()}`, 20, 65);
     
-    // Prepare table data
-    const tableData = data.map(transaction => {
-      const category = categories.find(c => c.id === transaction.categoryId);
-      return [
-        transaction.date,
-        transaction.description,
-        category?.name || 'Unknown',
-        `₹${transaction.amount.toLocaleString()}`,
-        transaction.paymentMethod,
-        transaction.type
-      ];
-    });
+    let currentY = 80;
 
-    // Add table
-    (pdf as any).autoTable({
-      head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method', 'Type']],
-      body: tableData,
-      startY: 85,
-      styles: { fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 25 },
-        5: { cellWidth: 20 }
+    // Income Table
+    if (incomeData.length > 0) {
+      pdf.setFontSize(14);
+      pdf.text('Income Transactions', 20, currentY);
+      currentY += 10;
+      
+      const incomeTableData = incomeData.map(transaction => {
+        const category = categories.find(c => c.id === transaction.categoryId);
+        return [
+          transaction.date,
+          transaction.description,
+          category?.name || 'Unknown',
+          `₹${transaction.amount.toLocaleString()}`,
+          transaction.paymentMethod
+        ];
+      });
+
+      (pdf as any).autoTable({
+        head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method']],
+        body: incomeTableData,
+        startY: currentY,
+        styles: { fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 60 },
+          2: { cellWidth: 30 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 }
+        },
+        margin: { top: 10 }
+      });
+
+      currentY = (pdf as any).lastAutoTable.finalY + 20;
+    }
+
+    // Expense Table
+    if (expenseData.length > 0) {
+      // Add new page if needed
+      if (currentY > 200) {
+        pdf.addPage();
+        currentY = 20;
       }
-    });
+
+      pdf.setFontSize(14);
+      pdf.text('Expense Transactions', 20, currentY);
+      currentY += 10;
+      
+      const expenseTableData = expenseData.map(transaction => {
+        const category = categories.find(c => c.id === transaction.categoryId);
+        return [
+          transaction.date,
+          transaction.description,
+          category?.name || 'Unknown',
+          `₹${transaction.amount.toLocaleString()}`,
+          transaction.paymentMethod
+        ];
+      });
+
+      (pdf as any).autoTable({
+        head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method']],
+        body: expenseTableData,
+        startY: currentY,
+        styles: { fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 60 },
+          2: { cellWidth: 30 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 }
+        }
+      });
+    }
 
     pdf.save(filename);
   };
