@@ -172,7 +172,7 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
                   label={({ name, percent, value }) => 
                     percent > 3 ? `${name}: ₹${value.toLocaleString()} (${(percent * 100).toFixed(1)}%)` : ''
                   }
-                  outerRadius={window.innerWidth < 640 ? 80 : 120}
+                  outerRadius={120}
                   fill="#8884d8"
                   dataKey="amount"
                   fontSize={11}

@@ -73,7 +73,7 @@ export const BudgetTracker = () => {
   // Scroll spy effect - MOVED BEFORE ANY CONDITIONAL RETURNS
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['settings', 'dashboard', 'transactions', 'analytics', 'reports', 'export'];
+      const sections = ['settings', 'transactions', 'dashboard', 'analytics', 'reports', 'export'];
       const scrollPosition = window.scrollY + 150; // Offset for sticky nav
 
       for (let i = sections.length - 1; i >= 0; i--) {
@@ -255,19 +255,43 @@ export const BudgetTracker = () => {
                 </p>
               </div>
               
-              <div className="flex items-center gap-2">
-                <MonthSelector 
-                  selectedMonth={selectedMonth}
-                  onMonthChange={setSelectedMonth}
-                />
-                <ProfilePopover 
-                  userProfile={userProfile}
-                  onProfileUpdate={loadData}
-                  transactions={transactions}
-                  categories={[...categories, ...incomeCategories]}
-                  budgets={budgets}
-                  selectedMonth={selectedMonth}
-                />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                {/* Budget Summary in Header */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Budget</p>
+                    <p className="text-sm font-bold text-cyber-primary">₹{totalBudget.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Income</p>
+                    <p className="text-sm font-bold text-cyber-success">₹{monthlyIncome.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Expenses</p>
+                    <p className="text-sm font-bold text-cyber-danger">₹{monthlyExpenses.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Remaining</p>
+                    <p className={`text-sm font-bold ${remaining >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
+                      ₹{remaining.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 ml-auto">
+                  <MonthSelector 
+                    selectedMonth={selectedMonth}
+                    onMonthChange={setSelectedMonth}
+                  />
+                  <ProfilePopover 
+                    userProfile={userProfile}
+                    onProfileUpdate={loadData}
+                    transactions={transactions}
+                    categories={[...categories, ...incomeCategories]}
+                    budgets={budgets}
+                    selectedMonth={selectedMonth}
+                  />
+                </div>
               </div>
             </div>
           </Card>
@@ -301,45 +325,8 @@ export const BudgetTracker = () => {
               </div>
             </div>
           </section>
-          <section id="dashboard" className="scroll-mt-32">
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-cyber-primary">Dashboard</h2>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <Card className="glass-card p-4 text-center">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total Budget</p>
-                  <p className="text-lg sm:text-2xl font-bold text-cyber-primary">₹{totalBudget.toLocaleString()}</p>
-                </Card>
-                <Card className="glass-card p-4 text-center">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total Income</p>
-                  <p className="text-lg sm:text-2xl font-bold text-cyber-success">₹{monthlyIncome.toLocaleString()}</p>
-                </Card>
-                <Card className="glass-card p-4 text-center">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total Expenses</p>
-                  <p className="text-lg sm:text-2xl font-bold text-cyber-danger">₹{monthlyExpenses.toLocaleString()}</p>
-                </Card>
-                <Card className="glass-card p-4 text-center">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Remaining</p>
-                  <p className={`text-lg sm:text-2xl font-bold ${remaining >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
-                    ₹{remaining.toLocaleString()}
-                  </p>
-                </Card>
-              </div>
-              
-              {/* Quick Overview */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
-                <Analytics 
-                  transactions={transactions}
-                  categories={[...categories, ...incomeCategories]}
-                  budgets={budgets}
-                  selectedMonth={selectedMonth}
-                />
-              </div>
-            </div>
-          </section>
 
-          {/* Transactions Section */}
+          {/* Transactions Section - SECOND */}
           <section id="transactions" className="scroll-mt-32">
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-cyber-primary">Transactions</h2>
@@ -391,6 +378,24 @@ export const BudgetTracker = () => {
                   </div>
                 </TabsContent>
               </Tabs>
+            </div>
+          </section>
+
+          {/* Dashboard Section - THIRD */}
+          <section id="dashboard" className="scroll-mt-32">
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-cyber-primary">Dashboard</h2>
+              
+              {/* Quick Overview */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <PaymentSummary transactions={transactions} selectedMonth={selectedMonth} />
+                <Analytics 
+                  transactions={transactions}
+                  categories={[...categories, ...incomeCategories]}
+                  budgets={budgets}
+                  selectedMonth={selectedMonth}
+                />
+              </div>
             </div>
           </section>
 
