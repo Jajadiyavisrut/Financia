@@ -68,6 +68,25 @@ export const BudgetTracker = () => {
     }
   }, [user]);
 
+  // Scroll spy effect - MOVED BEFORE ANY CONDITIONAL RETURNS
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ['dashboard', 'transactions', 'analytics', 'reports', 'export', 'settings'];
+      const scrollPosition = window.scrollY + 150; // Offset for sticky nav
+
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const section = document.getElementById(sections[i]);
+        if (section && section.offsetTop <= scrollPosition) {
+          setActiveSection(sections[i]);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -217,25 +236,6 @@ export const BudgetTracker = () => {
 
   const totalBudget = budgets.filter(b => b.month === selectedMonth).reduce((sum, b) => sum + b.amount, 0);
   const remaining = totalBudget - monthlyExpenses;
-
-  // Scroll spy effect
-  useEffect(() => {
-    const handleScroll = () => {
-      const sections = ['dashboard', 'transactions', 'analytics', 'reports', 'export', 'settings'];
-      const scrollPosition = window.scrollY + 150; // Offset for sticky nav
-
-      for (let i = sections.length - 1; i >= 0; i--) {
-        const section = document.getElementById(sections[i]);
-        if (section && section.offsetTop <= scrollPosition) {
-          setActiveSection(sections[i]);
-          break;
-        }
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
