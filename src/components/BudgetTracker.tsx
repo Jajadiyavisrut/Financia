@@ -20,6 +20,7 @@ import { IncomeExpenseCharts } from "./IncomeExpenseCharts";
 import { ShareDialog } from "./ShareDialog";
 import { MonthlySummary } from "./MonthlySummary";
 import { ExportManager } from "./ExportManager";
+import { ProfileSettings } from "./ProfileSettings";
 
 export interface Category {
   id: string;
@@ -101,11 +102,25 @@ export const BudgetTracker = () => {
       // Set default categories if none exist
       if (expenseCategories.length === 0) {
         await initializeDefaultCategories();
-        return loadData(); // Reload data after initialization
+        // After initialization, fetch the data again
+        const { data: refreshedCategoriesData } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('user_id', user?.id);
+        
+        const refreshedUniqueCategories = refreshedCategoriesData?.filter((category, index, self) => 
+          index === self.findIndex(c => c.name === category.name && c.type === category.type)
+        ) || [];
+        
+        const refreshedExpenseCategories = refreshedUniqueCategories.filter(c => c.type === 'expense');
+        const refreshedIncomeCategories = refreshedUniqueCategories.filter(c => c.type === 'income');
+        
+        setCategories(refreshedExpenseCategories);
+        setIncomeCategories(refreshedIncomeCategories);
+      } else {
+        setCategories(expenseCategories);
+        setIncomeCategories(incomeCategories);
       }
-
-      setCategories(expenseCategories);
-      setIncomeCategories(incomeCategories);
 
       // Load budgets
       const { data: budgetsData, error: budgetsError } = await supabase
@@ -410,6 +425,10 @@ export const BudgetTracker = () => {
               <h2 className="text-2xl font-bold text-cyber-primary">Settings</h2>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <div className="space-y-4">
+                  <ProfileSettings 
+                    userProfile={userProfile}
+                    onProfileUpdate={loadData}
+                  />
                   <CategoryManager 
                     categories={categories} 
                     setCategories={setCategories}

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+import { ResetPassword } from "./ResetPassword";
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -16,6 +17,7 @@ interface AuthPageProps {
 export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,6 +25,10 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
     shareCode: ""
   });
   const { toast } = useToast();
+
+  if (showResetPassword) {
+    return <ResetPassword onBack={() => setShowResetPassword(false)} />;
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -198,6 +204,15 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
                       Sign In
                     </>
                   )}
+                </Button>
+                
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  className="w-full text-sm text-muted-foreground"
+                  onClick={() => setShowResetPassword(true)}
+                >
+                  Forgot your password?
                 </Button>
               </form>
             </TabsContent>
