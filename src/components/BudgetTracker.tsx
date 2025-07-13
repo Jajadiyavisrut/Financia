@@ -21,6 +21,8 @@ import { ShareDialog } from "./ShareDialog";
 import { MonthlySummary } from "./MonthlySummary";
 import { ExportManager } from "./ExportManager";
 import { ProfileSettings } from "./ProfileSettings";
+import { ProfilePopover } from "./ProfilePopover";
+import { MonthSelector } from "./MonthSelector";
 
 export interface Category {
   id: string;
@@ -48,7 +50,7 @@ export interface Transaction {
 export const BudgetTracker = () => {
   const { signOut, user } = useAuth();
   const { toast } = useToast();
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const [activeSection, setActiveSection] = useState("settings");
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -71,7 +73,7 @@ export const BudgetTracker = () => {
   // Scroll spy effect - MOVED BEFORE ANY CONDITIONAL RETURNS
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['dashboard', 'transactions', 'analytics', 'reports', 'export', 'settings'];
+      const sections = ['settings', 'dashboard', 'transactions', 'analytics', 'reports', 'export'];
       const scrollPosition = window.scrollY + 150; // Offset for sticky nav
 
       for (let i = sections.length - 1; i >= 0; i--) {
@@ -253,30 +255,19 @@ export const BudgetTracker = () => {
                 </p>
               </div>
               
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground">Selected Month</p>
-                  <p className="font-semibold text-cyber-primary">
-                    {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <ShareDialog 
-                    transactions={transactions}
-                    categories={[...categories, ...incomeCategories]}
-                    budgets={budgets}
-                    selectedMonth={selectedMonth}
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={signOut}
-                    className="flex items-center gap-2"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span className="hidden sm:inline">Sign Out</span>
-                  </Button>
-                </div>
+              <div className="flex items-center gap-2">
+                <MonthSelector 
+                  selectedMonth={selectedMonth}
+                  onMonthChange={setSelectedMonth}
+                />
+                <ProfilePopover 
+                  userProfile={userProfile}
+                  onProfileUpdate={loadData}
+                  transactions={transactions}
+                  categories={[...categories, ...incomeCategories]}
+                  budgets={budgets}
+                  selectedMonth={selectedMonth}
+                />
               </div>
             </div>
           </Card>
@@ -290,7 +281,26 @@ export const BudgetTracker = () => {
       <div className="space-y-12 p-2 sm:p-4">
         <div className="container mx-auto max-w-7xl space-y-12">
           
-          {/* Dashboard Section */}
+          {/* Categories and Budget Section - FIRST */}
+          <section id="settings" className="scroll-mt-32">
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-cyber-primary">Categories & Budget</h2>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <CategoryManager 
+                  categories={categories} 
+                  setCategories={setCategories}
+                  incomeCategories={incomeCategories}
+                  setIncomeCategories={setIncomeCategories}
+                />
+                <BudgetManager 
+                  categories={categories}
+                  budgets={budgets}
+                  setBudgets={setBudgets}
+                  selectedMonth={selectedMonth}
+                />
+              </div>
+            </div>
+          </section>
           <section id="dashboard" className="scroll-mt-32">
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-cyber-primary">Dashboard</h2>
@@ -416,39 +426,6 @@ export const BudgetTracker = () => {
                 categories={[...categories, ...incomeCategories]}
                 budgets={budgets}
               />
-            </div>
-          </section>
-
-          {/* Settings Section */}
-          <section id="settings" className="scroll-mt-32">
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-cyber-primary">Settings</h2>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <ProfileSettings 
-                    userProfile={userProfile}
-                    onProfileUpdate={loadData}
-                  />
-                  <CategoryManager 
-                    categories={categories} 
-                    setCategories={setCategories}
-                    incomeCategories={incomeCategories}
-                    setIncomeCategories={setIncomeCategories}
-                  />
-                </div>
-                <div className="space-y-4">
-                  <BudgetManager 
-                    categories={categories}
-                    budgets={budgets}
-                    setBudgets={setBudgets}
-                    selectedMonth={selectedMonth}
-                  />
-                  <MonthYearPicker 
-                    selectedMonth={selectedMonth}
-                    onMonthChange={setSelectedMonth}
-                  />
-                </div>
-              </div>
             </div>
           </section>
 

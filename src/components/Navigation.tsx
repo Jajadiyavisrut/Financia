@@ -9,6 +9,12 @@ interface NavigationProps {
 export const Navigation = ({ activeSection }: NavigationProps) => {
   const navItems = [
     {
+      id: "settings",
+      label: "Categories",
+      icon: Settings,
+      description: "Categories & budgets"
+    },
+    {
       id: "dashboard",
       label: "Dashboard",
       icon: BarChart3,
@@ -37,12 +43,6 @@ export const Navigation = ({ activeSection }: NavigationProps) => {
       label: "Export",
       icon: FileText,
       description: "Download data"
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      icon: Settings,
-      description: "Categories & budgets"
     }
   ];
 
