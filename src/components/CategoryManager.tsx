@@ -102,7 +102,7 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
     }
   };
 
-  const deleteCategory = (id: string, type: "expense" | "income") => {
+  const deleteCategory = async (id: string, type: "expense" | "income") => {
     const targetCategories = type === "expense" ? categories : incomeCategories;
     const setTargetCategories = type === "expense" ? setCategories : setIncomeCategories;
     
@@ -115,7 +115,31 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
       return;
     }
 
-    setTargetCategories(targetCategories.filter(cat => cat.id !== id));
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setTargetCategories(targetCategories.filter(cat => cat.id !== id));
+      toast({
+        title: "Category Deleted",
+        description: "Category deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete category. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const startEditing = (category: Category) => {
@@ -123,17 +147,42 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
     setEditingName(category.name);
   };
 
-  const saveEdit = (type: "expense" | "income") => {
+  const saveEdit = async (type: "expense" | "income") => {
     if (!editingName.trim()) return;
     
     const targetCategories = type === "expense" ? categories : incomeCategories;
     const setTargetCategories = type === "expense" ? setCategories : setIncomeCategories;
 
-    setTargetCategories(targetCategories.map(cat => 
-      cat.id === editingId ? { ...cat, name: editingName.trim() } : cat
-    ));
-    setEditingId(null);
-    setEditingName("");
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({ name: editingName.trim() })
+        .eq('id', editingId)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setTargetCategories(targetCategories.map(cat => 
+        cat.id === editingId ? { ...cat, name: editingName.trim() } : cat
+      ));
+      setEditingId(null);
+      setEditingName("");
+      
+      toast({
+        title: "Category Updated",
+        description: "Category name updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update category. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const CategoryList = ({ categoryList, type }: { categoryList: Category[], type: "expense" | "income" }) => (
@@ -147,6 +196,7 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
                 onChange={(e) => setEditingName(e.target.value)}
                 className="h-8"
                 onKeyPress={(e) => e.key === 'Enter' && saveEdit(type)}
+                autoFocus
               />
               <Button size="sm" onClick={() => saveEdit(type)}>Save</Button>
               <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
