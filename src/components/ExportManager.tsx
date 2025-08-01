@@ -8,6 +8,14 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+// Extend jsPDF interface for autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+    lastAutoTable: { finalY: number };
+  }
+}
+
 interface Category {
   id: string;
   name: string;
@@ -171,7 +179,7 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
         ];
       });
 
-      (pdf as any).autoTable({
+      pdf.autoTable({
         head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method']],
         body: incomeTableData,
         startY: currentY,
@@ -186,7 +194,7 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
         margin: { top: 10 }
       });
 
-      currentY = (pdf as any).lastAutoTable.finalY + 20;
+      currentY = pdf.lastAutoTable.finalY + 20;
     }
 
     // Expense Table
@@ -212,7 +220,7 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
         ];
       });
 
-      (pdf as any).autoTable({
+      pdf.autoTable({
         head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method']],
         body: expenseTableData,
         startY: currentY,
