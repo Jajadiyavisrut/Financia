@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Transaction, Category } from "./BudgetTracker";
 
 interface IncomeExpenseChartsProps {
@@ -41,25 +41,26 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
     };
   }).filter(item => item.amount > 0);
 
-  // Expense Category Breakdown Data for pie chart
-  const expenseBreakdown = monthlyTransactions
-    .filter(t => t.type === "expense")
-    .reduce((acc, transaction) => {
-      const category = categories.find(c => c.id === transaction.categoryId);
-      if (category) {
-        acc[category.name] = (acc[category.name] || 0) + transaction.amount;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-  const pieChartData = Object.entries(expenseBreakdown).map(([name, amount]) => {
-    const category = categories.find(c => c.name === name);
+  // Category Distribution Data for bar chart (combining income and expense)
+  const categoryDistribution = categories.map(category => {
+    const incomeAmount = monthlyTransactions
+      .filter(t => t.type === "income" && t.categoryId === category.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const expenseAmount = monthlyTransactions
+      .filter(t => t.type === "expense" && t.categoryId === category.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalAmount = incomeAmount + expenseAmount;
+    
     return {
-      name,
-      amount,
-      fill: category?.color || "#ef4444"
+      name: category.name,
+      income: incomeAmount,
+      expense: expenseAmount,
+      total: totalAmount,
+      color: category.color || "#6366f1"
     };
-  });
+  }).filter(item => item.total > 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -155,34 +156,36 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
         </CardContent>
       </Card>
       
-      {/* Expense Category Breakdown Pie Chart */}
+      {/* Category Distribution Bar Chart */}
       <Card className="glass-card lg:col-span-2">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Expense Distribution</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Category Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          {pieChartData.length > 0 ? (
+          {categoryDistribution.length > 0 ? (
             <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
-                <Pie
-                  data={pieChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent, value }) => 
-                    percent > 5 ? `${name}: ${(percent * 100).toFixed(1)}%` : ''
-                  }
-                  outerRadius={120}
-                  fill="#8884d8"
-                  dataKey="amount"
+              <BarChart data={categoryDistribution} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="hsl(var(--foreground))"
                   fontSize={11}
-                >
-                  {pieChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  interval={0}
+                />
+                <YAxis 
+                  stroke="hsl(var(--foreground))"
+                  fontSize={11}
+                  tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                  width={60}
+                />
                 <Tooltip 
-                  formatter={(value: number) => [`₹${value.toLocaleString()}`, "Amount Spent"]}
+                  formatter={(value: number, name: string) => [
+                    `₹${value.toLocaleString()}`, 
+                    name === 'income' ? 'Income' : name === 'expense' ? 'Expense' : 'Total'
+                  ]}
                   labelStyle={{ color: "hsl(var(--foreground))" }}
                   contentStyle={{ 
                     backgroundColor: "hsl(var(--background))", 
@@ -191,11 +194,25 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
                     fontSize: "12px"
                   }}
                 />
-              </PieChart>
+                <Bar 
+                  dataKey="income" 
+                  fill="#22c55e" 
+                  name="income" 
+                  radius={[2, 2, 0, 0]}
+                  stackId="amount"
+                />
+                <Bar 
+                  dataKey="expense" 
+                  fill="#ef4444" 
+                  name="expense" 
+                  radius={[2, 2, 0, 0]}
+                  stackId="amount"
+                />
+              </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-[350px] text-muted-foreground text-sm">
-              No expense data for this month
+              No transaction data for this month
             </div>
           )}
         </CardContent>
