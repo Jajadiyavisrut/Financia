@@ -272,8 +272,8 @@ export const BudgetTracker = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Remaining</p>
-                    <p className={`text-sm font-bold ${remaining >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
-                      ₹{remaining.toLocaleString()}
+                    <p className={`text-sm font-bold ${(monthlyIncome - monthlyExpenses) >= 0 ? 'text-cyber-success' : 'text-cyber-danger'}`}>
+                      ₹{(monthlyIncome - monthlyExpenses).toLocaleString()}
                     </p>
                   </div>
                 </div>

@@ -49,7 +49,8 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
       return;
     }
 
-    if (targetCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
+    // Check for duplicates on frontend to provide immediate feedback
+    if (targetCategories.some(cat => cat.name.toLowerCase() === name.trim().toLowerCase())) {
       toast({
         title: "Category Exists",
         description: "A category with this name already exists.",
@@ -71,7 +72,13 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle unique constraint violation
+        if (error.code === '23505' && error.message.includes('unique_user_category_name_type')) {
+          throw new Error('A category with this name already exists.');
+        }
+        throw error;
+      }
 
       const newCategory: Category = {
         id: data.id,
@@ -88,13 +95,14 @@ export const CategoryManager = ({ categories, setCategories, incomeCategories, s
 
       toast({
         title: "Category Added",
-        description: `${name} category created successfully.`,
+        description: `${name.trim()} category created successfully.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding category:', error);
+      const errorMessage = error.message || "Failed to add category. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to add category. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
