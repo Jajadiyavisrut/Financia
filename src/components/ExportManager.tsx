@@ -60,7 +60,7 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
   const generateMonthOptions = () => {
     const options = [];
     const currentDate = new Date();
-    for (let i = -12; i <= 12; i++) {
+    for (let i = -12; i <= 0; i++) { // Changed upper bound to 0 to exclude future months
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i);
       const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });

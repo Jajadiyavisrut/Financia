@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,12 +41,17 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
   const [selectedCategory, setSelectedCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date(selectedMonth));
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "online" | "card">("cash");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Update selectedDate when selectedMonth changes
+  useEffect(() => {
+    setSelectedDate(new Date(selectedMonth));
+  }, [selectedMonth]);
 
   const addTransaction = async () => {
     if (!selectedCategory || !amount || !description) {
