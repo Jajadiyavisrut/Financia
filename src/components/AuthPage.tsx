@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus, Banknote } from "lucide-react";
 import { ResetPassword } from "./ResetPassword";
 
 interface AuthPageProps {
@@ -18,6 +18,7 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -49,45 +50,26 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
     setIsLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
       const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            display_name: formData.displayName
-          }
+          data: { display_name: formData.displayName },
+          emailRedirectTo: `${window.location.origin}/`
         }
       });
 
       if (error) {
         if (error.message.includes('already registered')) {
-          toast({
-            title: "Account exists",
-            description: "This email is already registered. Please sign in instead.",
-            variant: "destructive",
-          });
+          toast({ title: "Account exists", description: "This email is already registered. Please sign in instead.", variant: "destructive" });
         } else {
-          toast({
-            title: "Sign up failed",
-            description: error.message,
-            variant: "destructive",
-          });
+          toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
         }
       } else {
-        toast({
-          title: "Account created!",
-          description: "Please check your email to confirm your account.",
-        });
+        toast({ title: "Account created", description: "Please confirm the email we sent to activate your account." });
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "An unexpected error occurred. Please try again.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -135,11 +117,14 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
     }
   };
 
+  
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="glass-card w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-cyber-primary to-cyber-secondary bg-clip-text text-transparent flex items-center justify-center gap-2">
+            <Banknote className="h-6 w-6" />
             Welcome to Financia
           </CardTitle>
           <p className="text-muted-foreground">Manage your finances with ease</p>
@@ -256,14 +241,14 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      minLength={6}
+                       minLength={6}
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -276,7 +261,6 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
                     Password must be at least 6 characters long
                   </p>
                 </div>
-                
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     "Creating account..."
@@ -289,6 +273,7 @@ export const AuthPage = ({ onAuthSuccess, onSharedDataAccess }: AuthPageProps) =
                 </Button>
               </form>
             </TabsContent>
+            
             
             <TabsContent value="share" className="space-y-4">
               <form onSubmit={handleShareCodeAccess} className="space-y-4">

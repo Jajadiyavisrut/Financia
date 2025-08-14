@@ -23,16 +23,24 @@ export const ShareDialog = ({ transactions, categories, budgets, selectedMonth }
   const [expiryMinutes, setExpiryMinutes] = useState("5");
   const { toast } = useToast();
 
+  const generateRandomCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let out = '';
+    for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+    return out;
+  };
+
   const generateShareCode = async () => {
     setIsLoading(true);
     try {
-      // Generate unique code
-      const { data: codeData, error: codeError } = await supabase
-        .rpc('generate_share_code');
-      
-      if (codeError) throw codeError;
+      // quick sanity check: ensure table exists (helps with clearer error if migrations missing)
+      const probe = await supabase.from('shared_finance_data').select('id').limit(1);
+      if (probe.error && (probe.error as any).code === '42P01') {
+        throw new Error('Shared data table not found. Run the Supabase migrations included in the repo.');
+      }
 
-      const code = codeData;
+      // Try to generate a unique code client-side; retry on conflict
+      let code = generateRandomCode();
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(expiryMinutes));
 
@@ -49,17 +57,27 @@ export const ShareDialog = ({ transactions, categories, budgets, selectedMonth }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Save to database
-      const { error } = await supabase
-        .from('shared_finance_data')
-        .insert({
-          user_id: user.id,
-          share_code: code,
-          expires_at: expiresAt.toISOString(),
-          data: shareData as any
-        });
-
-      if (error) throw error;
+      // Save to database with retry on unique constraint collisions
+      let attempts = 0;
+      while (attempts < 5) {
+        const { error } = await supabase
+          .from('shared_finance_data')
+          .insert({
+            user_id: user.id,
+            share_code: code,
+            expires_at: expiresAt.toISOString(),
+            data: shareData as any
+          });
+        if (!error) break;
+        // retry on duplicate share_code
+        if ((error as any).code === '23505') {
+          code = generateRandomCode();
+          attempts++;
+          continue;
+        }
+        // surface full supabase error
+        throw new Error((error as any)?.message || 'Insert failed');
+      }
 
       setShareCode(code);
       toast({
@@ -70,7 +88,7 @@ export const ShareDialog = ({ transactions, categories, budgets, selectedMonth }
       console.error('Error generating share code:', error);
       toast({
         title: "Error",
-        description: "Failed to generate share code. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate share code.",
         variant: "destructive",
       });
     } finally {

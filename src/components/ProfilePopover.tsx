@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { User, Save, LogOut, Share2 } from "lucide-react";
+import { User, Save, LogOut, Share2, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,10 @@ export const ProfilePopover = ({
   const [displayName, setDisplayName] = useState(userProfile?.display_name || "");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -69,6 +73,40 @@ export const ProfilePopover = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (!newPassword || newPassword.length < 6) {
+      toast({ title: 'Invalid password', description: 'New password must be at least 6 characters.', variant: 'destructive' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: 'Passwords do not match', description: 'Please re-enter the new password.', variant: 'destructive' });
+      return;
+    }
+    setPwLoading(true);
+    try {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email: user.email as string, password: currentPassword });
+      if (signInErr) {
+        toast({ title: 'Authentication failed', description: 'Current password is incorrect.', variant: 'destructive' });
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        toast({ title: 'Failed to change password', description: error.message, variant: 'destructive' });
+      } else {
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        toast({ title: 'Password updated', description: 'Your password has been changed successfully.' });
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: 'Could not update password. Try again.', variant: 'destructive' });
+    } finally {
+      setPwLoading(false);
     }
   };
 
@@ -123,8 +161,42 @@ export const ProfilePopover = ({
           </div>
 
           <Separator />
+          <form onSubmit={handleChangePassword} className="space-y-2">
+            <h5 className="text-xs font-medium flex items-center gap-2"><KeyRound className="h-3 w-3" /> Change Password</h5>
+            <Input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="text-xs"
+              required
+            />
+            <Input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              minLength={6}
+              className="text-xs"
+              required
+            />
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder="Re-enter new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                minLength={6}
+                className="text-xs"
+                required
+              />
+              <Button type="submit" size="sm" disabled={pwLoading} className="px-2">
+                {pwLoading ? 'Saving...' : 'Update'}
+              </Button>
+            </div>
+          </form>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-2">
             <ShareDialog 
               transactions={transactions}
               categories={categories}

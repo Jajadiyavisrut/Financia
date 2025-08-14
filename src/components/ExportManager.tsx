@@ -6,15 +6,9 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
-// Extend jsPDF interface for autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
+// Note: jspdf-autotable v5 exposes a function. We access lastAutoTable via (doc as any).
 
 interface Category {
   id: string;
@@ -179,7 +173,7 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
         ];
       });
 
-      pdf.autoTable({
+      autoTable(pdf, {
         head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method']],
         body: incomeTableData,
         startY: currentY,
@@ -194,7 +188,7 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
         margin: { top: 10 }
       });
 
-      currentY = pdf.lastAutoTable.finalY + 20;
+      currentY = (pdf as any).lastAutoTable.finalY + 20;
     }
 
     // Expense Table
@@ -220,7 +214,7 @@ export const ExportManager = ({ transactions, categories, budgets }: ExportManag
         ];
       });
 
-      pdf.autoTable({
+      autoTable(pdf, {
         head: [['Date', 'Description', 'Category', 'Amount', 'Payment Method']],
         body: expenseTableData,
         startY: currentY,

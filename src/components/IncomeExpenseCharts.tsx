@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useRef, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Transaction, Category } from "./BudgetTracker";
 
@@ -9,6 +10,22 @@ interface IncomeExpenseChartsProps {
 }
 
 export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }: IncomeExpenseChartsProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [hasWidth, setHasWidth] = useState(false);
+  
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setHasWidth(width > 0);
+      }
+    });
+    ro.observe(el);
+    setHasWidth(el.getBoundingClientRect().width > 0);
+    return () => ro.disconnect();
+  }, []);
   const monthlyTransactions = transactions.filter(t => t.date.startsWith(selectedMonth));
   
   // Separate income and expense categories for better visualization
@@ -19,7 +36,7 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
   const incomeData = incomeCategories.map(category => {
     const amount = monthlyTransactions
       .filter(t => t.type === "income" && t.categoryId === category.id)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
     
     return {
       category: category.name,
@@ -32,7 +49,7 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
   const expenseData = expenseCategories.map(category => {
     const amount = monthlyTransactions
       .filter(t => t.type === "expense" && t.categoryId === category.id)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
     
     return {
       category: category.name,
@@ -45,11 +62,11 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
   const categoryDistribution = categories.map(category => {
     const incomeAmount = monthlyTransactions
       .filter(t => t.type === "income" && t.categoryId === category.id)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
     
     const expenseAmount = monthlyTransactions
       .filter(t => t.type === "expense" && t.categoryId === category.id)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
     
     const totalAmount = incomeAmount + expenseAmount;
     
@@ -63,14 +80,14 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
   }).filter(item => item.total > 0);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" ref={containerRef}>
       {/* Income Categories Chart */}
       <Card className="glass-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-base sm:text-lg text-cyber-success">Income by Category</CardTitle>
         </CardHeader>
         <CardContent>
-          {incomeData.length > 0 ? (
+          {incomeData.length > 0 && hasWidth ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={incomeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -82,11 +99,11 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
                   textAnchor="end"
                   height={80}
                 />
-                <YAxis 
+              <YAxis 
                   stroke="hsl(var(--foreground))"
                   fontSize={10}
                   tick={{ fontSize: 10 }}
-                  tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                  tickFormatter={(value) => `₹${Number(value).toLocaleString()}`}
                   width={50}
                 />
                 <Tooltip 
@@ -116,7 +133,7 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
           <CardTitle className="text-base sm:text-lg text-cyber-danger">Expenses by Category</CardTitle>
         </CardHeader>
         <CardContent>
-          {expenseData.length > 0 ? (
+          {expenseData.length > 0 && hasWidth ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={expenseData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -128,11 +145,11 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
                   textAnchor="end"
                   height={80}
                 />
-                <YAxis 
+              <YAxis 
                   stroke="hsl(var(--foreground))"
                   fontSize={10}
                   tick={{ fontSize: 10 }}
-                  tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                  tickFormatter={(value) => `₹${Number(value).toLocaleString()}`}
                   width={50}
                 />
                 <Tooltip 
@@ -162,7 +179,7 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
           <CardTitle className="text-base sm:text-lg">Category Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          {categoryDistribution.length > 0 ? (
+          {categoryDistribution.length > 0 && hasWidth ? (
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={categoryDistribution} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -178,7 +195,7 @@ export const IncomeExpenseCharts = ({ transactions, categories, selectedMonth }:
                 <YAxis 
                   stroke="hsl(var(--foreground))"
                   fontSize={11}
-                  tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                  tickFormatter={(value) => `₹${Number(value).toLocaleString()}`}
                   width={60}
                 />
                 <Tooltip 

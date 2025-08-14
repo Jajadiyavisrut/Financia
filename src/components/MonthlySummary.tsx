@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,6 +28,22 @@ interface MonthlySummaryProps {
 }
 
 export const MonthlySummary = ({ transactions, categories }: MonthlySummaryProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [hasWidth, setHasWidth] = useState(false);
+  
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setHasWidth(width > 0);
+      }
+    });
+    ro.observe(el);
+    setHasWidth(el.getBoundingClientRect().width > 0);
+    return () => ro.disconnect();
+  }, []);
   const [startMonth, setStartMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -66,13 +82,13 @@ export const MonthlySummary = ({ transactions, categories }: MonthlySummaryProps
     const categoryTotals = categories.map(category => {
       const total = expenseTransactions
         .filter(t => t.categoryId === category.id)
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
       return {
         name: category.name,
-        amount: total,
+        amount: Number(total) || 0,
         color: category.color
       };
-    }).filter(item => item.amount > 0);
+    }).filter(item => Number.isFinite(item.amount) && item.amount > 0);
 
     return categoryTotals;
   };
@@ -111,7 +127,7 @@ export const MonthlySummary = ({ transactions, categories }: MonthlySummaryProps
   };
 
   return (
-    <Card className="glass-card">
+    <Card className="glass-card" ref={containerRef}>
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <BarChartIcon className="h-5 w-5" />
@@ -187,48 +203,71 @@ export const MonthlySummary = ({ transactions, categories }: MonthlySummaryProps
           {/* Category Distribution */}
           <div className="p-4 rounded-lg bg-secondary/20 border border-white/10">
             <h4 className="text-lg font-semibold mb-4 text-center">Category Distribution</h4>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={getCategoryData()} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={100} />
-                <Tooltip 
-                  formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']}
-                  labelStyle={{ color: '#000' }}
-                />
-                <Bar dataKey="amount" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {getCategoryData().length > 0 && hasWidth ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={getCategoryData()}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={120}
+                    paddingAngle={4}
+                    dataKey="amount"
+                  >
+                    {getCategoryData().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => [`₹${Number(value).toLocaleString()}`, 'Amount']}
+                    labelStyle={{ color: '#000' }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
+                No expense data in this range
+              </div>
+            )}
           </div>
 
           {/* Payment Method Distribution */}
           <div className="p-4 rounded-lg bg-secondary/20 border border-white/10">
             <h4 className="text-lg font-semibold mb-4 text-center">Payment Method Distribution</h4>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={getPaymentMethodData()}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={120}
-                  paddingAngle={5}
-                  dataKey="amount"
-                >
-                  {getPaymentMethodData().map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']}
-                  labelStyle={{ color: '#000' }}
-                />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            {getPaymentMethodData().length > 0 && hasWidth ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={getPaymentMethodData()}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={120}
+                    paddingAngle={5}
+                    dataKey="amount"
+                  >
+                    {getPaymentMethodData().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']}
+                    labelStyle={{ color: '#000' }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
+                No payment method data in this range
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
     </Card>
   );
 };
+
