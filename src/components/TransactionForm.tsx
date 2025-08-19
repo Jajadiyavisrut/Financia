@@ -41,7 +41,17 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
   const [selectedCategory, setSelectedCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date(selectedMonth));
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    // If selected month is current month, use current date, otherwise use first of month
+    if (selectedMonth === currentMonth) {
+      return now;
+    } else {
+      return new Date(selectedMonth);
+    }
+  });
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "online" | "card">("cash");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +60,15 @@ export const TransactionForm = ({ categories, transactions, setTransactions, typ
 
   // Update selectedDate when selectedMonth changes
   useEffect(() => {
-    setSelectedDate(new Date(selectedMonth));
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    // If selected month is current month, use current date, otherwise use first of month
+    if (selectedMonth === currentMonth) {
+      setSelectedDate(now);
+    } else {
+      setSelectedDate(new Date(selectedMonth));
+    }
   }, [selectedMonth]);
 
   const addTransaction = async () => {
